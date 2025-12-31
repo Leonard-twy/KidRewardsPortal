@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Points & Rewards</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .login-screen {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            margin: 100px auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .login-screen h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .user-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .user-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-align: center;
+        }
+
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .user-card.kid {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .user-card h3 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .user-card p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h2 {
+            color: #667eea;
+        }
+
+        .header-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .points-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+        }
+
+        .logout-btn {
+            background: #f5576c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-success {
+            background: #4caf50;
+        }
+
+        .btn-danger {
+            background: #f5576c;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .item-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .item-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .item-card.pending {
+            border-left-color: #ff9800;
+            background: #fff8e1;
+        }
+
+        .item-card.approved {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .item-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .item-points {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .item-description {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .history-item {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .history-details {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-info {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Initial data structure
+        const initialData = {
+            appPassword: '1234', // Main app password
+            parentPassword: 'parent123', // Parent access password
+            users: [
+                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
+                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
+                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
+            ],
+            tasks: [],
+            rewards: [],
+            taskSubmissions: [],
+            rewardRedemptions: [],
+            history: []
+        };
+
+        function App() {
+            const [data, setData] = useState(() => {
+                const saved = localStorage.getItem('familyPointsApp');
+                let loadedData = saved ? JSON.parse(saved) : initialData;
+                
+                // Migrate old data to include passwords
+                if (!loadedData.appPassword) {
+                    loadedData.appPassword = '1234';
+                }
+                if (!loadedData.parentPassword) {
+                    loadedData.parentPassword = 'parent123';
+                }
+                if (loadedData.users) {
+                    loadedData.users = loadedData.users.map(u => {
+                        if (!u.password) {
+                            if (u.role === 'parent') {
+                                return { ...u, password: 'parent123' };
+                            } else {
+                                return { ...u, password: u.id }; // kid1, kid2, kid3
+                            }
+                        }
+                        return u;
+                    });
+                }
+                
+                return loadedData;
+            });
+            const [currentUser, setCurrentUser] = useState(null);
+            const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [activeTab, setActiveTab] = useState('tasks');
+            const [showModal, setShowModal] = useState(false);
+            const [modalType, setModalType] = useState('');
+            const [editItem, setEditItem] = useState(null);
+
+            useEffect(() => {
+                localStorage.setItem('familyPointsApp', JSON.stringify(data));
+            }, [data]);
+
+            const unlockApp = (password) => {
+                if (password === data.appPassword) {
+                    setIsAppUnlocked(true);
+                    return true;
+                }
+                return false;
+            };
+
+            const login = (userId) => {
+                const user = data.users.find(u => u.id === userId);
+                setCurrentUser(user);
+            };
+
+            const logout = () => {
+                setCurrentUser(null);
+                setIsAuthenticated(false);
+                setActiveTab('profile');
+            };
+
+            const authenticate = (password) => {
+                if (currentUser.role === 'parent') {
+                    if (password === data.parentPassword) {
+                        setIsAuthenticated(true);
+                        return true;
+                    }
+                } else {
+                    if (password === currentUser.password) {
+                        setIsAuthenticated(true);
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            const openModal = (type, item = null) => {
+                setModalType(type);
+                setEditItem(item);
+                setShowModal(true);
+            };
+
+            const closeModal = () => {
+                setShowModal(false);
+                setModalType('');
+                setEditItem(null);
+            };
+
+            const addOrUpdateTask = (taskData) => {
+                setData(prev => {
+                    if (editItem) {
+                        return {
+                            ...prev,
+                            tasks: prev.tasks.map(t => t.id === editItem.id ? { ...t, ...taskData } : t)
+                        };
+                    } else {
+                        const newTask = {
+                            id: Date.now().toString(),
+                            ...taskData,
+                            createdBy: currentUser.id,
+                            createdAt: new Date().toISOString()
+                        };
+                        return { ...prev, tasks: [...prev.tasks, newTask] };
+                    }
+                });
+                closeModal();
+            };
+
+            const deleteTask = (taskId) => {
+                if (confirm('Are you sure you want to delete this task?')) {
+                    setData(prev => ({
+                        ...prev,
+                        tasks: prev.tasks.filter(t => t.id !== taskId)
+                    }));
+                }
+            };
+
+            const addOrUpdateReward = (rewardData) => {
+                setData(prev => {
+                    if (editItem) {
+                        return {
+                            ...prev,
+                            rewards: prev.rewards.map(r => r.id === editItem.id ? { ...r, ...rewardData } : r)
+                        };
+                    } else {
+                        const newReward = {
+                            id: Date.now().toString(),
+                            ...rewardData,
+                            createdBy: currentUser.id,
+                            createdAt: new Date().toISOString()
+                        };
+                        return { ...prev, rewards: [...prev.rewards, newReward] };
+                    }
+                });
+                closeModal();
+            };
+
+            const deleteReward = (rewardId) => {
+                if (confirm('Are you sure you want to delete this reward?')) {
+                    setData(prev => ({
+                        ...prev,
+                        rewards: prev.rewards.filter(r => r.id !== rewardId)
+                    }));
+                }
+            };
+
+            const submitTask = (taskId) => {
+                // Check if already submitted today
+                const today = new Date().toDateString();
+                const alreadySubmittedToday = data.taskSubmissions.some(s => 
+                    s.taskId === taskId && 
+                    s.kidId === currentUser.id && 
+                    new Date(s.submittedAt).toDateString() === today
+                );
+
+                if (alreadySubmittedToday) {
+                    alert('You can only submit this task once per day. Try again tomorrow!');
+                    return;
+                }
+
+                const submission = {
+                    id: Date.now().toString(),
+                    taskId,
+                    kidId: currentUser.id,
+                    status: 'pending',
+                    submittedAt: new Date().toISOString()
+                };
+                setData(prev => ({
+                    ...prev,
+                    taskSubmissions: [...prev.taskSubmissions, submission]
+                }));
+            };
+
+            const approveTaskSubmission = (submissionId) => {
+                setData(prev => {
+                    const submission = prev.taskSubmissions.find(s => s.id === submissionId);
+                    const task = prev.tasks.find(t => t.id === submission.taskId);
+                    const kid = prev.users.find(u => u.id === submission.kidId);
+
+                    const updatedSubmissions = prev.taskSubmissions.map(s =>
+                        s.id === submissionId ? { ...s, status: 'approved', approvedBy: currentUser.id, approvedAt: new Date().toISOString() } : s
+                    );
+
+                    const updatedUsers = prev.users.map(u =>
+                        u.id === submission.kidId ? { ...u, points: u.points + task.points } : u
+                    );
+
+                    const historyEntry = {
+                        id: Date.now().toString(),
+                        type: 'task_completed',
+                        kidId: submission.kidId,
+                        kidName: kid.name,
+                        taskName: task.title,
+                        points: task.points,
+                        approvedBy: currentUser.name,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    return {
+                        ...prev,
+                        taskSubmissions: updatedSubmissions,
+                        users: updatedUsers,
+                        history: [...prev.history, historyEntry]
+                    };
+                });
+            };
+
+            const submitRedemption = (rewardId) => {
+                const redemption = {
+                    id: Date.now().toString(),
+                    rewardId,
+                    kidId: currentUser.id,
+                    status: 'pending',
+                    submittedAt: new Date().toISOString()
+                };
+                setData(prev => ({
+                    ...prev,
+                    rewardRedemptions: [...prev.rewardRedemptions, redemption]
+                }));
+            };
+
+            const approveRedemption = (redemptionId) => {
+                setData(prev => {
+                    const redemption = prev.rewardRedemptions.find(r => r.id === redemptionId);
+                    const reward = prev.rewards.find(r => r.id === redemption.rewardId);
+                    const kid = prev.users.find(u => u.id === redemption.kidId);
+
+                    if (kid.points < reward.points) {
+                        alert('Insufficient points!');
+                        return prev;
+                    }
+
+                    const updatedRedemptions = prev.rewardRedemptions.map(r =>
+                        r.id === redemptionId ? { ...r, status: 'approved', approvedBy: currentUser.id, approvedAt: new Date().toISOString() } : r
+                    );
+
+                    const updatedUsers = prev.users.map(u =>
+                        u.id === redemption.kidId ? { ...u, points: u.points - reward.points } : u
+                    );
+
+                    const historyEntry = {
+                        id: Date.now().toString(),
+                        type: 'reward_redeemed',
+                        kidId: redemption.kidId,
+                        kidName: kid.name,
+                        rewardName: reward.title,
+                        points: reward.points,
+                        approvedBy: currentUser.name,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    return {
+                        ...prev,
+                        rewardRedemptions: updatedRedemptions,
+                        users: updatedUsers,
+                        history: [...prev.history, historyEntry]
+                    };
+                });
+            };
+
+            const resetKid = (kidId, kidName) => {
+                if (confirm(`Are you sure you want to reset ${kidName}? This will:\n- Clear all their activities and history\n- Reset their points to 0\n- Remove all pending submissions and redemptions\n\nThis action cannot be undone.`)) {
+                    setData(prev => ({
+                        ...prev,
+                        users: prev.users.map(u => 
+                            u.id === kidId ? { ...u, points: 0 } : u
+                        ),
+                        taskSubmissions: prev.taskSubmissions.filter(s => s.kidId !== kidId),
+                        rewardRedemptions: prev.rewardRedemptions.filter(r => r.kidId !== kidId),
+                        history: prev.history.filter(h => h.kidId !== kidId)
+                    }));
+                }
+            };
+
+            const updateProfilePhoto = (userId, photoDataUrl) => {
+                setData(prev => ({
+                    ...prev,
+                    users: prev.users.map(u => 
+                        u.id === userId ? { ...u, profilePhoto: photoDataUrl } : u
+                    )
+                }));
+            };
+
+            if (!isAppUnlocked) {
+                return <AppUnlockScreen onUnlock={unlockApp} />;
+            }
+
+            if (!currentUser) {
+                return <LoginScreen users={data.users} onLogin={login} />;
+            }
+
+            // Only require authentication for parents
+            if (currentUser.role === 'parent' && !isAuthenticated) {
+                return <AuthScreen user={currentUser} onAuth={authenticate} onBack={logout} />;
+            }
+
+            if (currentUser.role === 'parent') {
+                return <ParentDashboard 
+                    data={data}
+                    setData={setData}
+                    currentUser={currentUser}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    onLogout={logout}
+                    onOpenModal={openModal}
+                    onDeleteTask={deleteTask}
+                    onDeleteReward={deleteReward}
+                    onApproveTask={approveTaskSubmission}
+                    onApproveRedemption={approveRedemption}
+                    onResetKid={resetKid}
+                    showModal={showModal}
+                    modalType={modalType}
+                    editItem={editItem}
+                    onCloseModal={closeModal}
+                    onSaveTask={addOrUpdateTask}
+                    onSaveReward={addOrUpdateReward}
+                />;
+            } else {
+                return <KidDashboard
+                    data={data}
+                    currentUser={currentUser}
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                    onLogout={logout}
+                    onSubmitTask={submitTask}
+                    onSubmitRedemption={submitRedemption}
+                    onUpdateProfilePhoto={updateProfilePhoto}
+                />;
+            }
+        }
+
+        function AppUnlockScreen({ onUnlock }) {
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (onUnlock(password)) {
+                    setPassword('');
+                    setError('');
+                } else {
+                    setError('Incorrect password');
+                    setPassword('');
+                }
+            };
+
+            return (
+                <div className="login-screen">
+                    <h1>🔒 Family Points & Rewards</h1>
+                    <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
+                        Enter app password to continue
+                    </p>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="App Password"
+                                autoFocus
+                                style={{ textAlign: 'center', fontSize: '18px' }}
+                            />
+                        </div>
+                        {error && (
+                            <p style={{ color: '#f5576c', textAlign: 'center', marginBottom: '15px' }}>
+                                {error}
+                            </p>
+                        )}
+                        <button type="submit" className="btn" style={{ width: '100%' }}>
+                            Unlock App
+                        </button>
+                        <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
+                            Default password: 1234
+                        </p>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                if (confirm('Clear all app data and reset to defaults? This cannot be undone.')) {
+                                    localStorage.removeItem('familyPointsApp');
+                                    window.location.reload();
+                                }
+                            }}
+                            style={{
+                                width: '100%',
+                                marginTop: '10px',
+                                background: '#f5576c',
+                                color: 'white',
+                                border: 'none',
+                                padding: '8px',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
+                            }}
+                        >
+                            Reset App Data
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        function LoginScreen({ users, onLogin }) {
+            return (
+                <div className="login-screen">
+                    <h1>Family Points & Rewards</h1>
+                    <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
+                        Select your profile to continue
+                    </p>
+                    <div className="user-grid">
+                        {users.map(user => (
+                            <div
+                                key={user.id}
+                                className={`user-card ${user.role}`}
+                                onClick={() => onLogin(user.id)}
+                            >
+                                {user.role === 'kid' && user.profilePhoto && (
+                                    <div style={{ 
+                                        width: '80px', 
+                                        height: '80px', 
+                                        margin: '0 auto 15px',
+                                        borderRadius: '50%',
+                                        overflow: 'hidden',
+                                        border: '3px solid white'
+                                    }}>
+                                        <img 
+                                            src={user.profilePhoto} 
+                                            alt={user.name}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                    </div>
+                                )}
+                                <h3>{user.name}</h3>
+                                <p>{user.role === 'parent' ? 'Parent' : `${user.points || 0} points`}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function AuthScreen({ user, onAuth, onBack }) {
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (onAuth(password)) {
+                    setPassword('');
+                    setError('');
+                } else {
+                    setError('Incorrect password');
+                    setPassword('');
+                }
+            };
+
+            return (
+                <div className="login-screen">
+                    <button 
+                        onClick={onBack}
+                        style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: '#667eea', 
+                            cursor: 'pointer',
+                            marginBottom: '20px',
+                            fontSize: '14px'
+                        }}
+                    >
+                        ← Back to user selection
+                    </button>
+                    <h1>Welcome, {user.name}!</h1>
+                    <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
+                        {user.role === 'parent' ? 'Enter parent password to continue' : 'Enter your password to continue'}
+                    </p>
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Password"
+                                autoFocus
+                                style={{ textAlign: 'center', fontSize: '18px' }}
+                            />
+                        </div>
+                        {error && (
+                            <p style={{ color: '#f5576c', textAlign: 'center', marginBottom: '15px' }}>
+                                {error}
+                            </p>
+                        )}
+                        <button type="submit" className="btn" style={{ width: '100%' }}>
+                            Login
+                        </button>
+                        {user.role === 'parent' && (
+                            <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
+                                Default parent password: parent123
+                            </p>
+                        )}
+                        {user.role === 'kid' && (
+                            <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
+                                Default password: {user.id}
+                            </p>
+                        )}
+                    </form>
+                </div>
+            );
+        }
+
+        function ParentDashboard({ 
+            data,
+            setData,
+            currentUser, 
+            activeTab, 
+            setActiveTab, 
+            onLogout,
+            onOpenModal,
+            onDeleteTask,
+            onDeleteReward,
+            onApproveTask,
+            onApproveRedemption,
+            onResetKid,
+            showModal,
+            modalType,
+            editItem,
+            onCloseModal,
+            onSaveTask,
+            onSaveReward
+        }) {
+            const pendingTaskSubmissions = data.taskSubmissions.filter(s => s.status === 'pending');
+            const pendingRedemptions = data.rewardRedemptions.filter(r => r.status === 'pending');
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h2>Parent Dashboard</h2>
+                        <div className="header-info">
+                            <span style={{ color: '#666' }}>Welcome, {currentUser.name}</span>
+                            <button className="logout-btn" onClick={onLogout}>Logout</button>
+                        </div>
+                    </div>
+
+                    <div className="tabs">
+                        <button 
+                            className={`tab ${activeTab === 'tasks' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('tasks')}
+                        >
+                            Tasks {pendingTaskSubmissions.length > 0 && `(${pendingTaskSubmissions.length})`}
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'rewards' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('rewards')}
+                        >
+                            Rewards {pendingRedemptions.length > 0 && `(${pendingRedemptions.length})`}
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'kids' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('kids')}
+                        >
+                            Kids Overview
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('settings')}
+                        >
+                            Settings
+                        </button>
+                    </div>
+
+                    <div className="main-content">
+                        {activeTab === 'tasks' && (
+                            <TasksTab
+                                tasks={data.tasks}
+                                submissions={data.taskSubmissions}
+                                users={data.users}
+                                onOpenModal={onOpenModal}
+                                onDeleteTask={onDeleteTask}
+                                onApproveTask={onApproveTask}
+                            />
+                        )}
+                        {activeTab === 'rewards' && (
+                            <RewardsTab
+                                rewards={data.rewards}
+                                redemptions={data.rewardRedemptions}
+                                users={data.users}
+                                onOpenModal={onOpenModal}
+                                onDeleteReward={onDeleteReward}
+                                onApproveRedemption={onApproveRedemption}
+                            />
+                        )}
+                        {activeTab === 'kids' && (
+                            <KidsOverviewTab
+                                users={data.users}
+                                history={data.history}
+                                onResetKid={onResetKid}
+                            />
+                        )}
+                        {activeTab === 'settings' && (
+                            <SettingsTab
+                                data={data}
+                                onUpdatePasswords={(passwords) => {
+                                    setData(prev => ({ ...prev, ...passwords }));
+                                }}
+                            />
+                        )}
+                    </div>
+
+                    {showModal && (
+                        <Modal 
+                            onClose={onCloseModal}
+                            title={modalType === 'task' 
+                                ? (editItem ? 'Edit Task' : 'Create Task')
+                                : (editItem ? 'Edit Reward' : 'Create Reward')
+                            }
+                        >
+                            {modalType === 'task' && (
+                                <TaskForm
+                                    task={editItem}
+                                    onSave={onSaveTask}
+                                    onClose={onCloseModal}
+                                />
+                            )}
+                            {modalType === 'reward' && (
+                                <RewardForm
+                                    reward={editItem}
+                                    onSave={onSaveReward}
+                                    onClose={onCloseModal}
+                                />
+                            )}
+                        </Modal>
+                    )}
+                </div>
+            );
+        }
+
+        function SettingsTab({ data, onUpdatePasswords }) {
+            const [appPassword, setAppPassword] = useState(data.appPassword);
+            const [parentPassword, setParentPassword] = useState(data.parentPassword);
+            const [saved, setSaved] = useState(false);
+
+            const handleSave = () => {
+                const updatedUsers = data.users.map(u => {
+                    if (u.role === 'parent') return { ...u, password: parentPassword };
+                    return u;
+                });
+
+                onUpdatePasswords({
+                    appPassword,
+                    parentPassword,
+                    users: updatedUsers
+                });
+
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+            };
+
+            return (
+                <div className="card">
+                    <h3>Password Settings</h3>
+                    <p style={{ color: '#666', marginBottom: '30px' }}>
+                        Manage passwords for app access and user accounts
+                    </p>
+
+                    <div className="form-group">
+                        <label>App Password</label>
+                        <input
+                            type="text"
+                            value={appPassword}
+                            onChange={(e) => setAppPassword(e.target.value)}
+                            placeholder="Main app password"
+                        />
+                        <p style={{ fontSize: '12px', color: '#999', marginTop: '5px' }}>
+                            Required to access the app
+                        </p>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Parent Password</label>
+                        <input
+                            type="text"
+                            value={parentPassword}
+                            onChange={(e) => setParentPassword(e.target.value)}
+                            placeholder="Parent access password"
+                        />
+                        <p style={{ fontSize: '12px', color: '#999', marginTop: '5px' }}>
+                            Required for both parents to access parent dashboard
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '30px' }}>
+                        <button className="btn" onClick={handleSave}>
+                            Save Passwords
+                        </button>
+                        {saved && (
+                            <span style={{ color: '#4caf50', fontWeight: '600' }}>
+                                ✓ Saved successfully!
+                            </span>
+                        )}
+                    </div>
+
+                    <div style={{ 
+                        marginTop: '30px', 
+                        padding: '15px', 
+                        background: '#fff8e1', 
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        color: '#856404'
+                    }}>
+                        <strong>⚠️ Important:</strong> Make sure to remember these passwords. There is no password recovery feature.
+                    </div>
+                </div>
+            );
+        }
+
+        function TasksTab({ tasks, submissions, users, onOpenModal, onDeleteTask, onApproveTask }) {
+            const pendingSubmissions = submissions.filter(s => s.status === 'pending');
+
+            return (
+                <>
+                    <div className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3>Manage Tasks</h3>
+                            <button className="btn" onClick={() => onOpenModal('task')}>
+                                + Create Task
+                            </button>
+                        </div>
+                        {tasks.length === 0 ? (
+                            <div className="empty-state">
+                                <p>No tasks created yet. Create your first task!</p>
+                            </div>
+                        ) : (
+                            <div className="item-list">
+                                {tasks.map(task => (
+                                    <div key={task.id} className="item-card">
+                                        <div className="item-header">
+                                            <div className="item-title">{task.title}</div>
+                                            <div className="item-points">+{task.points} pts</div>
+                                        </div>
+                                        {task.description && (
+                                            <div className="item-description">{task.description}</div>
+                                        )}
+                                        <div className="item-actions">
+                                            <button 
+                                                className="btn btn-secondary btn-small"
+                                                onClick={() => onOpenModal('task', task)}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button 
+                                                className="btn btn-danger btn-small"
+                                                onClick={() => onDeleteTask(task.id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {pendingSubmissions.length > 0 && (
+                        <div className="card">
+                            <h3>Pending Approvals</h3>
+                            <div className="item-list">
+                                {pendingSubmissions.map(submission => {
+                                    const task = tasks.find(t => t.id === submission.taskId);
+                                    const kid = users.find(u => u.id === submission.kidId);
+                                    return (
+                                        <div key={submission.id} className="item-card pending">
+                                            <div className="item-header">
+                                                <div>
+                                                    <div className="item-title">{task?.title}</div>
+                                                    <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
+                                                        Submitted by {kid?.name}
+                                                    </div>
+                                                </div>
+                                                <div className="item-points">+{task?.points} pts</div>
+                                            </div>
+                                            <div className="item-actions">
+                                                <button 
+                                                    className="btn btn-success btn-small"
+                                                    onClick={() => onApproveTask(submission.id)}
+                                                >
+                                                    Approve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        function RewardsTab({ rewards, redemptions, users, onOpenModal, onDeleteReward, onApproveRedemption }) {
+            const pendingRedemptions = redemptions.filter(r => r.status === 'pending');
+
+            return (
+                <>
+                    <div className="card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3>Manage Rewards</h3>
+                            <button className="btn" onClick={() => onOpenModal('reward')}>
+                                + Create Reward
+                            </button>
+                        </div>
+                        {rewards.length === 0 ? (
+                            <div className="empty-state">
+                                <p>No rewards created yet. Create your first reward!</p>
+                            </div>
+                        ) : (
+                            <div className="item-list">
+                                {rewards.map(reward => (
+                                    <div key={reward.id} className="item-card">
+                                        <div className="item-header">
+                                            <div className="item-title">{reward.title}</div>
+                                            <div className="item-points" style={{ background: '#f5576c' }}>
+                                                {reward.points} pts
+                                            </div>
+                                        </div>
+                                        {reward.description && (
+                                            <div className="item-description">{reward.description}</div>
+                                        )}
+                                        <div className="item-actions">
+                                            <button 
+                                                className="btn btn-secondary btn-small"
+                                                onClick={() => onOpenModal('reward', reward)}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button 
+                                                className="btn btn-danger btn-small"
+                                                onClick={() => onDeleteReward(reward.id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {pendingRedemptions.length > 0 && (
+                        <div className="card">
+                            <h3>Pending Redemptions</h3>
+                            <div className="item-list">
+                                {pendingRedemptions.map(redemption => {
+                                    const reward = rewards.find(r => r.id === redemption.rewardId);
+                                    const kid = users.find(u => u.id === redemption.kidId);
+                                    return (
+                                        <div key={redemption.id} className="item-card pending">
+                                            <div className="item-header">
+                                                <div>
+                                                    <div className="item-title">{reward?.title}</div>
+                                                    <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>
+                                                        Requested by {kid?.name}
+                                                    </div>
+                                                </div>
+                                                <div className="item-points" style={{ background: '#f5576c' }}>
+                                                    {reward?.points} pts
+                                                </div>
+                                            </div>
+                                            <div className="item-actions">
+                                                <button 
+                                                    className="btn btn-success btn-small"
+                                                    onClick={() => onApproveRedemption(redemption.id)}
+                                                >
+                                                    Approve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        }
+
+        function KidsOverviewTab({ users, history, onResetKid }) {
+            const kids = users.filter(u => u.role === 'kid');
+
+            return (
+                <div className="card">
+                    <h3>Kids Overview</h3>
+                    <div className="item-list">
+                        {kids.map(kid => {
+                            const kidHistory = history.filter(h => h.kidId === kid.id);
+                            return (
+                                <div key={kid.id} className="item-card">
+                                    <div className="item-header">
+                                        <div className="item-title">{kid.name}</div>
+                                        <div className="item-points">{kid.points} pts</div>
+                                    </div>
+                                    <div style={{ marginTop: '15px' }}>
+                                        <strong>Recent Activity:</strong>
+                                        {kidHistory.length === 0 ? (
+                                            <p style={{ color: '#999', marginTop: '10px' }}>No activity yet</p>
+                                        ) : (
+                                            <div style={{ marginTop: '10px' }}>
+                                                {kidHistory.slice(-5).reverse().map(h => (
+                                                    <div key={h.id} style={{ padding: '8px 0', borderBottom: '1px solid #e0e0e0', fontSize: '14px' }}>
+                                                        <span style={{ color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                                            {h.type === 'task_completed' ? '+' : '-'}{h.points} pts
+                                                        </span>
+                                                        {' - '}
+                                                        {h.type === 'task_completed' ? h.taskName : h.rewardName}
+                                                        {' '}
+                                                        <span style={{ color: '#999' }}>
+                                                            (by {h.approvedBy})
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0' }}>
+                                        <button 
+                                            className="btn btn-danger btn-small"
+                                            onClick={() => onResetKid(kid.id, kid.name)}
+                                        >
+                                            Reset {kid.name}
+                                        </button>
+                                        <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                                            Clear all activities and reset points to 0
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        function KidDashboard({ data, currentUser, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto }) {
+            const mySubmissions = data.taskSubmissions.filter(s => s.kidId === currentUser.id);
+            const myRedemptions = data.rewardRedemptions.filter(r => r.kidId === currentUser.id);
+            const myHistory = data.history.filter(h => h.kidId === currentUser.id);
+
+            return (
+                <div className="app-container">
+                    <div className="header">
+                        <h2>My Dashboard</h2>
+                        <div className="header-info">
+                            <span style={{ color: '#666' }}>Hi, {currentUser.name}!</span>
+                            <div className="points-badge">{currentUser.points} Points</div>
+                            <button className="logout-btn" onClick={onLogout}>Logout</button>
+                        </div>
+                    </div>
+
+                    <div className="tabs">
+                        <button 
+                            className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('profile')}
+                        >
+                            My Profile
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'balance' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('balance')}
+                        >
+                            Points Balance
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'tasks' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('tasks')}
+                        >
+                            Available Tasks
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'rewards' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('rewards')}
+                        >
+                            Rewards
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('history')}
+                        >
+                            My History
+                        </button>
+                    </div>
+
+                    <div className="main-content">
+                        {activeTab === 'profile' && (
+                            <ProfileTab currentUser={currentUser} onUpdateProfilePhoto={onUpdateProfilePhoto} />
+                        )}
+                        {activeTab === 'balance' && (
+                            <BalanceTab currentUser={currentUser} history={myHistory} />
+                        )}
+                        {activeTab === 'tasks' && (
+                            <KidTasksTab
+                                tasks={data.tasks}
+                                submissions={mySubmissions}
+                                onSubmitTask={onSubmitTask}
+                            />
+                        )}
+                        {activeTab === 'rewards' && (
+                            <KidRewardsTab
+                                rewards={data.rewards}
+                                redemptions={myRedemptions}
+                                currentPoints={currentUser.points}
+                                onSubmitRedemption={onSubmitRedemption}
+                            />
+                        )}
+                        {activeTab === 'history' && (
+                            <KidHistoryTab history={myHistory} />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileTab({ currentUser, onUpdateProfilePhoto }) {
+            const handlePhotoUpload = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    // Check file size (max 2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('Photo is too large. Please choose an image smaller than 2MB.');
+                        return;
+                    }
+
+                    // Check file type
+                    if (!file.type.startsWith('image/')) {
+                        alert('Please select an image file.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        onUpdateProfilePhoto(currentUser.id, e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleRemovePhoto = () => {
+                if (confirm('Remove your profile photo?')) {
+                    onUpdateProfilePhoto(currentUser.id, null);
+                }
+            };
+
+            return (
+                <div className="card">
+                    <h3>My Profile</h3>
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                        <div style={{ 
+                            width: '200px', 
+                            height: '200px', 
+                            margin: '0 auto 30px',
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            border: '4px solid #667eea',
+                            background: currentUser.profilePhoto ? 'transparent' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            {currentUser.profilePhoto ? (
+                                <img 
+                                    src={currentUser.profilePhoto} 
+                                    alt="Profile" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <div style={{ 
+                                    fontSize: '80px', 
+                                    color: 'white',
+                                    fontWeight: 'bold'
+                                }}>
+                                    {currentUser.name.charAt(0)}
+                                </div>
+                            )}
+                        </div>
+
+                        <h2 style={{ marginBottom: '10px', color: '#333' }}>{currentUser.name}</h2>
+                        <div className="points-badge" style={{ display: 'inline-block', marginBottom: '30px' }}>
+                            {currentUser.points} Points
+                        </div>
+
+                        <div style={{ maxWidth: '300px', margin: '0 auto' }}>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoUpload}
+                                style={{ display: 'none' }}
+                                id="photo-upload"
+                            />
+                            <label htmlFor="photo-upload" className="btn" style={{ width: '100%', cursor: 'pointer', marginBottom: '10px' }}>
+                                {currentUser.profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                            </label>
+                            
+                            {currentUser.profilePhoto && (
+                                <button 
+                                    className="btn btn-danger" 
+                                    style={{ width: '100%' }}
+                                    onClick={handleRemovePhoto}
+                                >
+                                    Remove Photo
+                                </button>
+                            )}
+
+                            <p style={{ fontSize: '12px', color: '#999', marginTop: '15px' }}>
+                                Upload a photo to personalize your profile. Max size: 2MB
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function BalanceTab({ currentUser, history }) {
+            const recentActivity = history.slice(-5).reverse();
+
+            return (
+                <div className="card">
+                    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                        <h3 style={{ marginBottom: '20px' }}>Current Balance</h3>
+                        <div style={{ 
+                            fontSize: '72px', 
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            marginBottom: '10px'
+                        }}>
+                            {currentUser.points}
+                        </div>
+                        <div style={{ fontSize: '24px', color: '#666', marginBottom: '40px' }}>
+                            points
+                        </div>
+                    </div>
+
+                    {recentActivity.length > 0 && (
+                        <>
+                            <h4 style={{ marginBottom: '15px', color: '#667eea' }}>Recent Activity</h4>
+                            <div>
+                                {recentActivity.map(h => (
+                                    <div key={h.id} style={{ padding: '15px', borderBottom: '1px solid #e0e0e0' }}>
+                                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                                            {new Date(h.timestamp).toLocaleDateString()}
+                                        </div>
+                                        <div style={{ fontWeight: '600', marginBottom: '5px' }}>
+                                            {h.type === 'task_completed' ? (
+                                                <span style={{ color: '#4caf50' }}>✓ {h.taskName}</span>
+                                            ) : (
+                                                <span style={{ color: '#f5576c' }}>★ {h.rewardName}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '14px', color: '#666' }}>
+                                            <span style={{ fontWeight: 'bold', color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                                {h.type === 'task_completed' ? '+' : '-'}{h.points} points
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            );
+        }
+
+        function KidTasksTab({ tasks, submissions, onSubmitTask }) {
+            const today = new Date().toDateString();
+
+            return (
+                <div className="card">
+                    <h3>Available Tasks</h3>
+                    {tasks.length === 0 ? (
+                        <div className="empty-state">
+                            <p>No tasks available right now. Check back later!</p>
+                        </div>
+                    ) : (
+                        <div className="item-list">
+                            {tasks.map(task => {
+                                // Check for pending submission
+                                const pendingSubmission = submissions.find(s => 
+                                    s.taskId === task.id && s.status === 'pending'
+                                );
+
+                                // Check if submitted today (approved or pending)
+                                const submittedToday = submissions.find(s => 
+                                    s.taskId === task.id && 
+                                    new Date(s.submittedAt).toDateString() === today
+                                );
+
+                                // Check most recent approved submission
+                                const approvedSubmissions = submissions.filter(s => 
+                                    s.taskId === task.id && s.status === 'approved'
+                                );
+                                const lastApproved = approvedSubmissions.length > 0 
+                                    ? approvedSubmissions[approvedSubmissions.length - 1]
+                                    : null;
+
+                                const canSubmit = !submittedToday;
+                                
+                                return (
+                                    <div key={task.id} className={`item-card ${pendingSubmission ? 'pending' : lastApproved ? 'approved' : ''}`}>
+                                        <div className="item-header">
+                                            <div className="item-title">{task.title}</div>
+                                            <div className="item-points">+{task.points} pts</div>
+                                        </div>
+                                        {task.description && (
+                                            <div className="item-description">{task.description}</div>
+                                        )}
+                                        <div className="item-actions">
+                                            {pendingSubmission ? (
+                                                <span className="status-badge status-pending">Waiting for approval</span>
+                                            ) : !canSubmit ? (
+                                                <span className="status-badge status-pending">
+                                                    Already submitted today - try tomorrow!
+                                                </span>
+                                            ) : (
+                                                <button 
+                                                    className="btn btn-small"
+                                                    onClick={() => onSubmitTask(task.id)}
+                                                >
+                                                    Submit for Approval
+                                                </button>
+                                            )}
+                                            {lastApproved && canSubmit && !pendingSubmission && (
+                                                <span style={{ fontSize: '12px', color: '#4caf50', marginLeft: '10px' }}>
+                                                    ✓ Last completed: {new Date(lastApproved.approvedAt).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function KidRewardsTab({ rewards, redemptions, currentPoints, onSubmitRedemption }) {
+            return (
+                <div className="card">
+                    <h3>Available Rewards</h3>
+                    {rewards.length === 0 ? (
+                        <div className="empty-state">
+                            <p>No rewards available yet. Keep earning points!</p>
+                        </div>
+                    ) : (
+                        <div className="item-list">
+                            {rewards.map(reward => {
+                                const pending = redemptions.find(r => r.rewardId === reward.id && r.status === 'pending');
+                                const canAfford = currentPoints >= reward.points;
+                                
+                                return (
+                                    <div key={reward.id} className={`item-card ${pending ? 'pending' : ''}`}>
+                                        <div className="item-header">
+                                            <div className="item-title">{reward.title}</div>
+                                            <div className="item-points" style={{ background: '#f5576c' }}>
+                                                {reward.points} pts
+                                            </div>
+                                        </div>
+                                        {reward.description && (
+                                            <div className="item-description">{reward.description}</div>
+                                        )}
+                                        <div className="item-actions">
+                                            {pending ? (
+                                                <span className="status-badge status-pending">Pending approval</span>
+                                            ) : (
+                                                <button 
+                                                    className="btn btn-small"
+                                                    onClick={() => onSubmitRedemption(reward.id)}
+                                                    disabled={!canAfford}
+                                                    style={{ opacity: canAfford ? 1 : 0.5 }}
+                                                >
+                                                    {canAfford ? 'Redeem' : 'Not enough points'}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function KidHistoryTab({ history }) {
+            return (
+                <div className="card">
+                    <h3>My History</h3>
+                    {history.length === 0 ? (
+                        <div className="empty-state">
+                            <p>No activity yet. Complete tasks to earn points!</p>
+                        </div>
+                    ) : (
+                        <div>
+                            {history.slice().reverse().map(item => (
+                                <div key={item.id} className="history-item">
+                                    <div className="history-date">
+                                        {new Date(item.timestamp).toLocaleDateString()} at {new Date(item.timestamp).toLocaleTimeString()}
+                                    </div>
+                                    <div className="history-title">
+                                        {item.type === 'task_completed' ? (
+                                            <span style={{ color: '#4caf50' }}>✓ Completed: {item.taskName}</span>
+                                        ) : (
+                                            <span style={{ color: '#f5576c' }}>★ Redeemed: {item.rewardName}</span>
+                                        )}
+                                    </div>
+                                    <div className="history-details">
+                                        <span style={{ fontWeight: 'bold', color: item.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                            {item.type === 'task_completed' ? '+' : '-'}{item.points} points
+                                        </span>
+                                        {' • '}
+                                        Approved by {item.approvedBy}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function TaskForm({ task, onSave, onClose }) {
+            const [title, setTitle] = useState(task?.title || '');
+            const [description, setDescription] = useState(task?.description || '');
+            const [points, setPoints] = useState(task?.points || 10);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave({ title, description, points: parseInt(points) });
+            };
+
+            return (
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Task Title *</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                            placeholder="e.g., Clean your room"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Description</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows="3"
+                            placeholder="Optional details about the task"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Points *</label>
+                        <input
+                            type="number"
+                            value={points}
+                            onChange={(e) => setPoints(e.target.value)}
+                            required
+                            min="1"
+                        />
+                    </div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn">
+                            {task ? 'Update Task' : 'Create Task'}
+                        </button>
+                    </div>
+                </form>
+            );
+        }
+
+        function RewardForm({ reward, onSave, onClose }) {
+            const [title, setTitle] = useState(reward?.title || '');
+            const [description, setDescription] = useState(reward?.description || '');
+            const [points, setPoints] = useState(reward?.points || 50);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSave({ title, description, points: parseInt(points) });
+            };
+
+            return (
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Reward Title *</label>
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            required
+                            placeholder="e.g., Extra screen time"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Description</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows="3"
+                            placeholder="Optional details about the reward"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Points Cost *</label>
+                        <input
+                            type="number"
+                            value={points}
+                            onChange={(e) => setPoints(e.target.value)}
+                            required
+                            min="1"
+                        />
+                    </div>
+                    <div className="form-actions">
+                        <button type="button" className="btn btn-secondary" onClick={onClose}>
+                            Cancel
+                        </button>
+                        <button type="submit" className="btn">
+                            {reward ? 'Update Reward' : 'Create Reward'}
+                        </button>
+                    </div>
+                </form>
+            );
+        }
+
+        function Modal({ children, onClose, title }) {
+            return (
+                <div className="modal" onClick={onClose}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>{title}</h3>
+                            <button className="close-btn" onClick={onClose}>×</button>
+                        </div>
+                        {children}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
