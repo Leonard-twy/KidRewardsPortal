@@ -1041,8 +1041,8 @@
             onSaveTask,
             onSaveReward
         }) {
-            const pendingTaskSubmissions = data.taskSubmissions.filter(s => s.status === 'pending');
-            const pendingRedemptions = data.rewardRedemptions.filter(r => r.status === 'pending');
+            const pendingTaskSubmissions = (data.taskSubmissions || []).filter(s => s.status === 'pending');
+            const pendingRedemptions = (data.rewardRedemptions || []).filter(r => r.status === 'pending');
 
             return (
                 <div className="app-container">
@@ -1227,7 +1227,8 @@
         }
 
         function TasksTab({ tasks, submissions, users, onOpenModal, onDeleteTask, onApproveTask }) {
-            const pendingSubmissions = submissions.filter(s => s.status === 'pending');
+            const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending');
+            const safeTasks = tasks || [];
 
             return (
                 <>
@@ -1238,13 +1239,13 @@
                                 + Create Task
                             </button>
                         </div>
-                        {tasks.length === 0 ? (
+                        {safeTasks.length === 0 ? (
                             <div className="empty-state">
                                 <p>No tasks created yet. Create your first task!</p>
                             </div>
                         ) : (
                             <div className="item-list">
-                                {tasks.map(task => (
+                                {safeTasks.map(task => (
                                     <div key={task.id} className="item-card">
                                         <div className="item-header">
                                             <div className="item-title">{task.title}</div>
@@ -1310,7 +1311,8 @@
         }
 
         function RewardsTab({ rewards, redemptions, users, onOpenModal, onDeleteReward, onApproveRedemption }) {
-            const pendingRedemptions = redemptions.filter(r => r.status === 'pending');
+            const pendingRedemptions = (redemptions || []).filter(r => r.status === 'pending');
+            const safeRewards = rewards || [];
 
             return (
                 <>
@@ -1321,13 +1323,13 @@
                                 + Create Reward
                             </button>
                         </div>
-                        {rewards.length === 0 ? (
+                        {safeRewards.length === 0 ? (
                             <div className="empty-state">
                                 <p>No rewards created yet. Create your first reward!</p>
                             </div>
                         ) : (
                             <div className="item-list">
-                                {rewards.map(reward => (
+                                {safeRewards.map(reward => (
                                     <div key={reward.id} className="item-card">
                                         <div className="item-header">
                                             <div className="item-title">{reward.title}</div>
@@ -1397,14 +1399,15 @@
         }
 
         function KidsOverviewTab({ users, history, onResetKid }) {
-            const kids = users.filter(u => u.role === 'kid');
+            const kids = (users || []).filter(u => u.role === 'kid');
+            const safeHistory = history || [];
 
             return (
                 <div className="card">
                     <h3>Kids Overview</h3>
                     <div className="item-list">
                         {kids.map(kid => {
-                            const kidHistory = history.filter(h => h.kidId === kid.id);
+                            const kidHistory = safeHistory.filter(h => h.kidId === kid.id);
                             return (
                                 <div key={kid.id} className="item-card">
                                     <div className="item-header">
@@ -1453,9 +1456,9 @@
         }
 
         function KidDashboard({ data, currentUser, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto }) {
-            const mySubmissions = data.taskSubmissions.filter(s => s.kidId === currentUser.id);
-            const myRedemptions = data.rewardRedemptions.filter(r => r.kidId === currentUser.id);
-            const myHistory = data.history.filter(h => h.kidId === currentUser.id);
+            const mySubmissions = (data.taskSubmissions || []).filter(s => s.kidId === currentUser.id);
+            const myRedemptions = (data.rewardRedemptions || []).filter(r => r.kidId === currentUser.id);
+            const myHistory = (data.history || []).filter(h => h.kidId === currentUser.id);
 
             return (
                 <div className="app-container">
@@ -1684,30 +1687,32 @@
 
         function KidTasksTab({ tasks, submissions, onSubmitTask }) {
             const today = new Date().toDateString();
+            const safeTasks = tasks || [];
+            const safeSubmissions = submissions || [];
 
             return (
                 <div className="card">
                     <h3>Available Tasks</h3>
-                    {tasks.length === 0 ? (
+                    {safeTasks.length === 0 ? (
                         <div className="empty-state">
                             <p>No tasks available right now. Check back later!</p>
                         </div>
                     ) : (
                         <div className="item-list">
-                            {tasks.map(task => {
+                            {safeTasks.map(task => {
                                 // Check for pending submission
-                                const pendingSubmission = submissions.find(s => 
+                                const pendingSubmission = safeSubmissions.find(s => 
                                     s.taskId === task.id && s.status === 'pending'
                                 );
 
                                 // Check if submitted today (approved or pending)
-                                const submittedToday = submissions.find(s => 
+                                const submittedToday = safeSubmissions.find(s => 
                                     s.taskId === task.id && 
                                     new Date(s.submittedAt).toDateString() === today
                                 );
 
                                 // Check most recent approved submission
-                                const approvedSubmissions = submissions.filter(s => 
+                                const approvedSubmissions = safeSubmissions.filter(s => 
                                     s.taskId === task.id && s.status === 'approved'
                                 );
                                 const lastApproved = approvedSubmissions.length > 0 
@@ -1756,17 +1761,20 @@
         }
 
         function KidRewardsTab({ rewards, redemptions, currentPoints, onSubmitRedemption }) {
+            const safeRewards = rewards || [];
+            const safeRedemptions = redemptions || [];
+
             return (
                 <div className="card">
                     <h3>Available Rewards</h3>
-                    {rewards.length === 0 ? (
+                    {safeRewards.length === 0 ? (
                         <div className="empty-state">
                             <p>No rewards available yet. Keep earning points!</p>
                         </div>
                     ) : (
                         <div className="item-list">
-                            {rewards.map(reward => {
-                                const pending = redemptions.find(r => r.rewardId === reward.id && r.status === 'pending');
+                            {safeRewards.map(reward => {
+                                const pending = safeRedemptions.find(r => r.rewardId === reward.id && r.status === 'pending');
                                 const canAfford = currentPoints >= reward.points;
                                 
                                 return (
