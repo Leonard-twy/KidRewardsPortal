@@ -498,6 +498,14 @@
             const [showModal, setShowModal] = useState(false);
             const [modalType, setModalType] = useState('');
             const [editItem, setEditItem] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+
+            // Initialize loading state
+            useEffect(() => {
+                // Mark as loaded after a brief moment to ensure data is ready
+                const timer = setTimeout(() => setIsLoading(false), 100);
+                return () => clearTimeout(timer);
+            }, []);
 
             useEffect(() => {
                 // Save to localStorage
@@ -520,9 +528,20 @@
                 const handleValueChange = (snapshot) => {
                     const firebaseData = snapshot.val();
                     if (firebaseData) {
-                        // Update local state with Firebase data
-                        setData(firebaseData);
-                        localStorage.setItem('familyPointsApp', JSON.stringify(firebaseData));
+                        // Ensure all required arrays exist
+                        const validatedData = {
+                            ...firebaseData,
+                            users: firebaseData.users || [],
+                            tasks: firebaseData.tasks || [],
+                            rewards: firebaseData.rewards || [],
+                            taskSubmissions: firebaseData.taskSubmissions || [],
+                            rewardRedemptions: firebaseData.rewardRedemptions || [],
+                            history: firebaseData.history || []
+                        };
+                        
+                        // Update local state with validated Firebase data
+                        setData(validatedData);
+                        localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
                     }
                 };
 
@@ -542,8 +561,10 @@
             };
 
             const login = (userId) => {
-                const user = data.users.find(u => u.id === userId);
-                setCurrentUser(user);
+                const user = (data.users || []).find(u => u.id === userId);
+                if (user) {
+                    setCurrentUser(user);
+                }
             };
 
             const logout = () => {
@@ -774,12 +795,27 @@
                 }));
             };
 
+            if (isLoading) {
+                return (
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        minHeight: '100vh',
+                        color: 'white',
+                        fontSize: '20px'
+                    }}>
+                        Loading...
+                    </div>
+                );
+            }
+
             if (!isAppUnlocked) {
                 return <AppUnlockScreen onUnlock={unlockApp} />;
             }
 
             if (!currentUser) {
-                return <LoginScreen users={data.users} onLogin={login} />;
+                return <LoginScreen users={data.users || []} onLogin={login} />;
             }
 
             // Only require authentication for parents
