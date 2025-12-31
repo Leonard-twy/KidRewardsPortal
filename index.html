@@ -7,6 +7,11 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -409,16 +414,44 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
+        // ====================================================================
+        // FIREBASE CONFIGURATION
+        // ====================================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyA1xLUBJDfEM8TGwwcTrnhVut4eUEd5OOY",
+            authDomain: "kid-rewards-portal.firebaseapp.com",
+            databaseURL: "https://kid-rewards-portal-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "kid-rewards-portal",
+            storageBucket: "kid-rewards-portal.firebasestorage.app",
+            messagingSenderId: "1022785278334",
+            appId: "1:1022785278334:web:a2550403a48ceb776aa32f"
+        };
+
+        // Initialize Firebase
+        let database = null;
+        let useFirebase = false;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            useFirebase = true;
+            console.log("✓ Firebase connected! Data will sync across devices.");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            console.log("Falling back to localStorage only");
+        }
+        // ====================================================================
+
         // Initial data structure
         const initialData = {
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
-                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
-                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
-                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
+                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
+                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
+                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
             ],
             tasks: [],
             rewards: [],
@@ -463,8 +496,38 @@
             const [editItem, setEditItem] = useState(null);
 
             useEffect(() => {
+                // Save to localStorage
                 localStorage.setItem('familyPointsApp', JSON.stringify(data));
+                
+                // Save to Firebase if enabled
+                if (useFirebase && database) {
+                    database.ref('familyData').set(data).catch(err => {
+                        console.error("Error saving to Firebase:", err);
+                    });
+                }
             }, [data]);
+
+            // Listen for changes from other devices via Firebase
+            useEffect(() => {
+                if (!useFirebase || !database) return;
+
+                const dataRef = database.ref('familyData');
+                
+                const handleValueChange = (snapshot) => {
+                    const firebaseData = snapshot.val();
+                    if (firebaseData) {
+                        // Update local state with Firebase data
+                        setData(firebaseData);
+                        localStorage.setItem('familyPointsApp', JSON.stringify(firebaseData));
+                    }
+                };
+
+                dataRef.on('value', handleValueChange);
+                
+                // Cleanup listener on unmount
+                return () => dataRef.off('value', handleValueChange);
+            }, []);
+
 
             const unlockApp = (password) => {
                 if (password === data.appPassword) {
@@ -773,6 +836,32 @@
             return (
                 <div className="login-screen">
                     <h1>🔒 Family Points & Rewards</h1>
+                    {useFirebase && (
+                        <div style={{ 
+                            textAlign: 'center', 
+                            marginBottom: '20px',
+                            padding: '10px',
+                            background: '#e8f5e9',
+                            borderRadius: '8px',
+                            color: '#2e7d32',
+                            fontSize: '14px'
+                        }}>
+                            ✓ Cloud Sync Enabled - Data syncs across devices
+                        </div>
+                    )}
+                    {!useFirebase && (
+                        <div style={{ 
+                            textAlign: 'center', 
+                            marginBottom: '20px',
+                            padding: '10px',
+                            background: '#fff3cd',
+                            borderRadius: '8px',
+                            color: '#856404',
+                            fontSize: '14px'
+                        }}>
+                            ⚠️ Local Mode - Data saved on this device only
+                        </div>
+                    )}
                     <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
                         Enter app password to continue
                     </p>
