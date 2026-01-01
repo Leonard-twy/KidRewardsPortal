@@ -451,11 +451,11 @@
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
-                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
-                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
-                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
+                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
+                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
+                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
             ],
             tasks: [],
             rewards: [],
@@ -499,6 +499,7 @@
             const [modalType, setModalType] = useState('');
             const [editItem, setEditItem] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
+            const [syncStatus, setSyncStatus] = useState('');
 
             // Initialize loading state
             useEffect(() => {
@@ -513,9 +514,17 @@
                 
                 // Save to Firebase if enabled
                 if (useFirebase && database) {
-                    database.ref('familyData').set(data).catch(err => {
-                        console.error("Error saving to Firebase:", err);
-                    });
+                    setSyncStatus('Syncing...');
+                    database.ref('familyData').set(data)
+                        .then(() => {
+                            setSyncStatus('Synced ✓');
+                            setTimeout(() => setSyncStatus(''), 2000);
+                        })
+                        .catch(err => {
+                            console.error("Error saving to Firebase:", err);
+                            setSyncStatus('Sync failed');
+                            setTimeout(() => setSyncStatus(''), 3000);
+                        });
                 }
             }, [data]);
 
@@ -524,13 +533,31 @@
                 if (!useFirebase || !database) return;
 
                 const dataRef = database.ref('familyData');
+                let isInitialLoad = true;
                 
                 const handleValueChange = (snapshot) => {
                     const firebaseData = snapshot.val();
+                    
+                    // Skip the initial load to prevent overwriting local data
+                    if (isInitialLoad) {
+                        isInitialLoad = false;
+                        
+                        // If Firebase has no data yet, save current data to Firebase
+                        if (!firebaseData) {
+                            console.log("Initializing Firebase with current data");
+                            database.ref('familyData').set(data).catch(err => {
+                                console.error("Error initializing Firebase:", err);
+                            });
+                            return;
+                        }
+                    }
+                    
                     if (firebaseData) {
                         // Ensure all required arrays exist
                         const validatedData = {
                             ...firebaseData,
+                            appPassword: firebaseData.appPassword || '1234',
+                            parentPassword: firebaseData.parentPassword || 'parent123',
                             users: firebaseData.users || [],
                             tasks: firebaseData.tasks || [],
                             rewards: firebaseData.rewards || [],
@@ -539,6 +566,7 @@
                             history: firebaseData.history || []
                         };
                         
+                        console.log("Syncing data from Firebase");
                         // Update local state with validated Firebase data
                         setData(validatedData);
                         localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
@@ -837,6 +865,7 @@
                     onApproveTask={approveTaskSubmission}
                     onApproveRedemption={approveRedemption}
                     onResetKid={resetKid}
+                    syncStatus={syncStatus}
                     showModal={showModal}
                     modalType={modalType}
                     editItem={editItem}
@@ -848,6 +877,7 @@
                 return <KidDashboard
                     data={data}
                     currentUser={currentUser}
+                    syncStatus={syncStatus}
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                     onLogout={logout}
@@ -1077,6 +1107,7 @@
             onApproveTask,
             onApproveRedemption,
             onResetKid,
+            syncStatus,
             showModal,
             modalType,
             editItem,
@@ -1093,6 +1124,15 @@
                         <h2>Parent Dashboard</h2>
                         <div className="header-info">
                             <span style={{ color: '#666' }}>Welcome, {currentUser.name}</span>
+                            {syncStatus && (
+                                <span style={{ 
+                                    fontSize: '12px', 
+                                    color: syncStatus.includes('✓') ? '#4caf50' : syncStatus.includes('failed') ? '#f5576c' : '#ff9800',
+                                    marginLeft: '10px'
+                                }}>
+                                    {syncStatus}
+                                </span>
+                            )}
                             <button className="logout-btn" onClick={onLogout}>Logout</button>
                         </div>
                     </div>
@@ -1498,7 +1538,7 @@
             );
         }
 
-        function KidDashboard({ data, currentUser, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto }) {
+        function KidDashboard({ data, currentUser, syncStatus, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto }) {
             const mySubmissions = (data.taskSubmissions || []).filter(s => s.kidId === currentUser.id);
             const myRedemptions = (data.rewardRedemptions || []).filter(r => r.kidId === currentUser.id);
             const myHistory = (data.history || []).filter(h => h.kidId === currentUser.id);
@@ -1509,6 +1549,15 @@
                         <h2>My Dashboard</h2>
                         <div className="header-info">
                             <span style={{ color: '#666' }}>Hi, {currentUser.name}!</span>
+                            {syncStatus && (
+                                <span style={{ 
+                                    fontSize: '12px', 
+                                    color: syncStatus.includes('✓') ? '#4caf50' : syncStatus.includes('failed') ? '#f5576c' : '#ff9800',
+                                    marginLeft: '10px'
+                                }}>
+                                    {syncStatus}
+                                </span>
+                            )}
                             <div className="points-badge">{currentUser.points} Points</div>
                             <button className="logout-btn" onClick={onLogout}>Logout</button>
                         </div>
