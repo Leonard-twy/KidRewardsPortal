@@ -787,6 +787,20 @@
                 });
             };
 
+            const rejectTaskSubmission = (submissionId) => {
+                if (confirm('Are you sure you want to reject this task submission?')) {
+                    setData(prev => {
+                        // Simply remove the rejected submission
+                        const updatedSubmissions = prev.taskSubmissions.filter(s => s.id !== submissionId);
+                        
+                        return {
+                            ...prev,
+                            taskSubmissions: updatedSubmissions
+                        };
+                    });
+                }
+            };
+
             const submitRedemption = (rewardId) => {
                 const redemption = {
                     id: Date.now().toString(),
@@ -838,6 +852,20 @@
                         history: [...prev.history, historyEntry]
                     };
                 });
+            };
+
+            const rejectRedemption = (redemptionId) => {
+                if (confirm('Are you sure you want to reject this reward redemption?')) {
+                    setData(prev => {
+                        // Simply remove the rejected redemption
+                        const updatedRedemptions = prev.rewardRedemptions.filter(r => r.id !== redemptionId);
+                        
+                        return {
+                            ...prev,
+                            rewardRedemptions: updatedRedemptions
+                        };
+                    });
+                }
             };
 
             const resetKid = (kidId, kidName) => {
@@ -903,7 +931,9 @@
                     onDeleteTask={deleteTask}
                     onDeleteReward={deleteReward}
                     onApproveTask={approveTaskSubmission}
+                    onRejectTask={rejectTaskSubmission}
                     onApproveRedemption={approveRedemption}
+                    onRejectRedemption={rejectRedemption}
                     onResetKid={resetKid}
                     syncStatus={syncStatus}
                     showModal={showModal}
@@ -1145,7 +1175,9 @@
             onDeleteTask,
             onDeleteReward,
             onApproveTask,
+            onRejectTask,
             onApproveRedemption,
+            onRejectRedemption,
             onResetKid,
             syncStatus,
             showModal,
@@ -1157,6 +1189,10 @@
         }) {
             const pendingTaskSubmissions = (data.taskSubmissions || []).filter(s => s.status === 'pending');
             const pendingRedemptions = (data.rewardRedemptions || []).filter(r => r.status === 'pending');
+            
+            // Sort tasks and rewards alphabetically by title
+            const sortedTasks = [...(data.tasks || [])].sort((a, b) => a.title.localeCompare(b.title));
+            const sortedRewards = [...(data.rewards || [])].sort((a, b) => a.title.localeCompare(b.title));
 
             return (
                 <div className="app-container">
@@ -1207,22 +1243,24 @@
                     <div className="main-content">
                         {activeTab === 'tasks' && (
                             <TasksTab
-                                tasks={data.tasks}
+                                tasks={sortedTasks}
                                 submissions={data.taskSubmissions}
                                 users={data.users}
                                 onOpenModal={onOpenModal}
                                 onDeleteTask={onDeleteTask}
                                 onApproveTask={onApproveTask}
+                                onRejectTask={onRejectTask}
                             />
                         )}
                         {activeTab === 'rewards' && (
                             <RewardsTab
-                                rewards={data.rewards}
+                                rewards={sortedRewards}
                                 redemptions={data.rewardRedemptions}
                                 users={data.users}
                                 onOpenModal={onOpenModal}
                                 onDeleteReward={onDeleteReward}
                                 onApproveRedemption={onApproveRedemption}
+                                onRejectRedemption={onRejectRedemption}
                             />
                         )}
                         {activeTab === 'kids' && (
@@ -1349,7 +1387,7 @@
             );
         }
 
-        function TasksTab({ tasks, submissions, users, onOpenModal, onDeleteTask, onApproveTask }) {
+        function TasksTab({ tasks, submissions, users, onOpenModal, onDeleteTask, onApproveTask, onRejectTask }) {
             const pendingSubmissions = (submissions || []).filter(s => s.status === 'pending');
             const safeTasks = tasks || [];
 
@@ -1422,6 +1460,12 @@
                                                 >
                                                     Approve
                                                 </button>
+                                                <button 
+                                                    className="btn btn-danger btn-small"
+                                                    onClick={() => onRejectTask(submission.id)}
+                                                >
+                                                    Reject
+                                                </button>
                                             </div>
                                         </div>
                                     );
@@ -1433,7 +1477,7 @@
             );
         }
 
-        function RewardsTab({ rewards, redemptions, users, onOpenModal, onDeleteReward, onApproveRedemption }) {
+        function RewardsTab({ rewards, redemptions, users, onOpenModal, onDeleteReward, onApproveRedemption, onRejectRedemption }) {
             const pendingRedemptions = (redemptions || []).filter(r => r.status === 'pending');
             const safeRewards = rewards || [];
 
@@ -1509,6 +1553,12 @@
                                                     onClick={() => onApproveRedemption(redemption.id)}
                                                 >
                                                     Approve
+                                                </button>
+                                                <button 
+                                                    className="btn btn-danger btn-small"
+                                                    onClick={() => onRejectRedemption(redemption.id)}
+                                                >
+                                                    Reject
                                                 </button>
                                             </div>
                                         </div>
@@ -1821,17 +1871,20 @@
             const today = new Date().toDateString();
             const safeTasks = tasks || [];
             const safeSubmissions = submissions || [];
+            
+            // Sort tasks alphabetically
+            const sortedTasks = [...safeTasks].sort((a, b) => a.title.localeCompare(b.title));
 
             return (
                 <div className="card">
                     <h3>Available Tasks</h3>
-                    {safeTasks.length === 0 ? (
+                    {sortedTasks.length === 0 ? (
                         <div className="empty-state">
                             <p>No tasks available right now. Check back later!</p>
                         </div>
                     ) : (
                         <div className="item-list">
-                            {safeTasks.map(task => {
+                            {sortedTasks.map(task => {
                                 // Check for pending submission
                                 const pendingSubmission = safeSubmissions.find(s => 
                                     s.taskId === task.id && s.status === 'pending'
@@ -1895,17 +1948,20 @@
         function KidRewardsTab({ rewards, redemptions, currentPoints, onSubmitRedemption }) {
             const safeRewards = rewards || [];
             const safeRedemptions = redemptions || [];
+            
+            // Sort rewards alphabetically
+            const sortedRewards = [...safeRewards].sort((a, b) => a.title.localeCompare(b.title));
 
             return (
                 <div className="card">
                     <h3>Available Rewards</h3>
-                    {safeRewards.length === 0 ? (
+                    {sortedRewards.length === 0 ? (
                         <div className="empty-state">
                             <p>No rewards available yet. Keep earning points!</p>
                         </div>
                     ) : (
                         <div className="item-list">
-                            {safeRewards.map(reward => {
+                            {sortedRewards.map(reward => {
                                 const pending = safeRedemptions.find(r => r.rewardId === reward.id && r.status === 'pending');
                                 const canAfford = currentPoints >= reward.points;
                                 
