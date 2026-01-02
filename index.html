@@ -440,9 +440,11 @@
             database = firebase.database();
             useFirebase = true;
             console.log("✓ Firebase connected! Data will sync across devices.");
+            console.log("Database URL:", firebaseConfig.databaseURL);
         } catch (error) {
             console.error("Firebase initialization error:", error);
             console.log("Falling back to localStorage only");
+            alert("Firebase sync disabled. Check console for details. Data will only save locally.");
         }
         // ====================================================================
 
@@ -500,6 +502,7 @@
             const [editItem, setEditItem] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
             const [syncStatus, setSyncStatus] = useState('');
+            const [lastSavedData, setLastSavedData] = useState(null);
 
             // Initialize loading state
             useEffect(() => {
@@ -512,18 +515,29 @@
                 // Save to localStorage
                 localStorage.setItem('familyPointsApp', JSON.stringify(data));
                 
-                // Save to Firebase if enabled
+                // Save to Firebase if enabled and data changed
                 if (useFirebase && database) {
+                    // Check if data actually changed to avoid infinite loops
+                    const dataString = JSON.stringify(data);
+                    if (dataString === lastSavedData) {
+                        return; // Data hasn't changed, skip save
+                    }
+                    
+                    setLastSavedData(dataString);
                     setSyncStatus('Syncing...');
+                    
                     database.ref('familyData').set(data)
                         .then(() => {
+                            console.log("✓ Data saved to Firebase successfully");
                             setSyncStatus('Synced ✓');
                             setTimeout(() => setSyncStatus(''), 2000);
                         })
                         .catch(err => {
-                            console.error("Error saving to Firebase:", err);
-                            setSyncStatus('Sync failed');
-                            setTimeout(() => setSyncStatus(''), 3000);
+                            console.error("❌ Error saving to Firebase:", err);
+                            console.error("Error code:", err.code);
+                            console.error("Error message:", err.message);
+                            setSyncStatus('Sync failed - Check console');
+                            setTimeout(() => setSyncStatus(''), 5000);
                         });
                 }
             }, [data]);
@@ -533,32 +547,36 @@
                 if (!useFirebase || !database) return;
 
                 const dataRef = database.ref('familyData');
-                let isInitialLoad = true;
+                let isFirstLoad = true;
                 
                 const handleValueChange = (snapshot) => {
                     const firebaseData = snapshot.val();
                     
-                    // Skip the initial load to prevent overwriting local data
-                    if (isInitialLoad) {
-                        isInitialLoad = false;
+                    // On first load, check if Firebase is empty
+                    if (isFirstLoad) {
+                        isFirstLoad = false;
                         
-                        // If Firebase has no data yet, save current data to Firebase
-                        if (!firebaseData) {
-                            console.log("Initializing Firebase with current data");
+                        if (!firebaseData || !firebaseData.users || firebaseData.users.length === 0) {
+                            console.log("📤 Initializing Firebase with current local data");
                             database.ref('familyData').set(data).catch(err => {
                                 console.error("Error initializing Firebase:", err);
                             });
-                            return;
+                            return; // Don't overwrite local data
                         }
+                        
+                        // If Firebase has data on first load, use it
+                        console.log("📥 Loading initial data from Firebase");
+                    } else {
+                        // After first load, this is a real-time update from another device
+                        console.log("🔄 Syncing update from another device");
                     }
                     
-                    if (firebaseData) {
-                        // Ensure all required arrays exist
+                    if (firebaseData && firebaseData.users && firebaseData.users.length > 0) {
+                        // Ensure all required fields exist
                         const validatedData = {
-                            ...firebaseData,
-                            appPassword: firebaseData.appPassword || '1234',
-                            parentPassword: firebaseData.parentPassword || 'parent123',
-                            users: firebaseData.users || [],
+                            appPassword: firebaseData.appPassword || data.appPassword || '1234',
+                            parentPassword: firebaseData.parentPassword || data.parentPassword || 'parent123',
+                            users: firebaseData.users || data.users || [],
                             tasks: firebaseData.tasks || [],
                             rewards: firebaseData.rewards || [],
                             taskSubmissions: firebaseData.taskSubmissions || [],
@@ -566,17 +584,24 @@
                             history: firebaseData.history || []
                         };
                         
-                        console.log("Syncing data from Firebase");
-                        // Update local state with validated Firebase data
-                        setData(validatedData);
-                        localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
+                        // Only update if data actually changed
+                        if (JSON.stringify(validatedData) !== JSON.stringify(data)) {
+                            setData(validatedData);
+                            localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
+                        }
                     }
                 };
 
-                dataRef.on('value', handleValueChange);
+                // Attach listener
+                dataRef.on('value', handleValueChange, (error) => {
+                    console.error("Firebase listener error:", error);
+                });
                 
                 // Cleanup listener on unmount
-                return () => dataRef.off('value', handleValueChange);
+                return () => {
+                    console.log("Cleaning up Firebase listener");
+                    dataRef.off('value', handleValueChange);
+                };
             }, []);
 
 
