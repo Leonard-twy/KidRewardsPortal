@@ -503,6 +503,7 @@
             const [isLoading, setIsLoading] = useState(true);
             const [syncStatus, setSyncStatus] = useState('');
             const [lastSavedData, setLastSavedData] = useState(null);
+            const [isSaving, setIsSaving] = useState(false);
 
             // Initialize loading state
             useEffect(() => {
@@ -523,6 +524,7 @@
                         return; // Data hasn't changed, skip save
                     }
                     
+                    setIsSaving(true);
                     setLastSavedData(dataString);
                     setSyncStatus('Syncing...');
                     
@@ -530,13 +532,17 @@
                         .then(() => {
                             console.log("✓ Data saved to Firebase successfully");
                             setSyncStatus('Synced ✓');
-                            setTimeout(() => setSyncStatus(''), 2000);
+                            setTimeout(() => {
+                                setSyncStatus('');
+                                setIsSaving(false);
+                            }, 2000);
                         })
                         .catch(err => {
                             console.error("❌ Error saving to Firebase:", err);
                             console.error("Error code:", err.code);
                             console.error("Error message:", err.message);
                             setSyncStatus('Sync failed - Check console');
+                            setIsSaving(false);
                             setTimeout(() => setSyncStatus(''), 5000);
                         });
                 }
@@ -550,6 +556,12 @@
                 let isFirstLoad = true;
                 
                 const handleValueChange = (snapshot) => {
+                    // Ignore if we're currently saving (this is our own write)
+                    if (isSaving) {
+                        console.log("⏭️ Skipping sync - currently saving");
+                        return;
+                    }
+                    
                     const firebaseData = snapshot.val();
                     
                     // On first load, check if Firebase is empty
@@ -585,7 +597,10 @@
                         };
                         
                         // Only update if data actually changed
-                        if (JSON.stringify(validatedData) !== JSON.stringify(data)) {
+                        const currentDataString = JSON.stringify(data);
+                        const newDataString = JSON.stringify(validatedData);
+                        
+                        if (newDataString !== currentDataString) {
                             setData(validatedData);
                             localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
                         }
@@ -602,7 +617,7 @@
                     console.log("Cleaning up Firebase listener");
                     dataRef.off('value', handleValueChange);
                 };
-            }, []);
+            }, [isSaving]);
 
 
             const unlockApp = (password) => {
