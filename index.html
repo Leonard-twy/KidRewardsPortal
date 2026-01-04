@@ -521,8 +521,16 @@
                     // Check if data actually changed to avoid infinite loops
                     const dataString = JSON.stringify(data);
                     if (dataString === lastSavedData) {
+                        console.log("⏭️ Skipping save - data unchanged");
                         return; // Data hasn't changed, skip save
                     }
+                    
+                    console.log("💾 Preparing to save data:", {
+                        taskCount: data.tasks?.length || 0,
+                        rewardCount: data.rewards?.length || 0,
+                        appPassword: data.appPassword,
+                        parentPassword: data.parentPassword
+                    });
                     
                     setIsSaving(true);
                     setLastSavedData(dataString);
@@ -535,7 +543,7 @@
                             setTimeout(() => {
                                 setSyncStatus('');
                                 setIsSaving(false);
-                            }, 2000);
+                            }, 1000);  // Reduced from 2000ms to 1000ms
                         })
                         .catch(err => {
                             console.error("❌ Error saving to Firebase:", err);
@@ -570,20 +578,30 @@
                     
                     const firebaseData = snapshot.val();
                     
-                    // On first load, check if Firebase is empty
+                    console.log("📡 Received data from Firebase:", {
+                        hasData: !!firebaseData,
+                        userCount: firebaseData?.users?.length || 0,
+                        taskCount: firebaseData?.tasks?.length || 0,
+                        appPassword: firebaseData?.appPassword,
+                        parentPassword: firebaseData?.parentPassword
+                    });
+                    
+                    // On first load
                     if (isFirstLoad) {
                         isFirstLoad = false;
                         
-                        if (!firebaseData || !firebaseData.users || firebaseData.users.length === 0) {
-                            console.log("📤 Initializing Firebase with current local data");
+                        // If Firebase has data, ALWAYS use it
+                        if (firebaseData && firebaseData.users && firebaseData.users.length > 0) {
+                            console.log("📥 Loading initial data from Firebase (has data)");
+                            // Continue to validation below
+                        } else {
+                            // Firebase is empty - initialize it with local data
+                            console.log("📤 Firebase empty - Initializing with local data");
                             database.ref('familyData').set(data).catch(err => {
                                 console.error("Error initializing Firebase:", err);
                             });
-                            return; // Don't overwrite local data
+                            return; // Don't process further
                         }
-                        
-                        // If Firebase has data on first load, use it
-                        console.log("📥 Loading initial data from Firebase");
                     } else {
                         // After first load, this is a real-time update from another device
                         console.log("🔄 Syncing update from another device");
@@ -592,9 +610,9 @@
                     if (firebaseData && firebaseData.users && firebaseData.users.length > 0) {
                         // Ensure all required fields exist
                         const validatedData = {
-                            appPassword: firebaseData.appPassword || data.appPassword || '1234',
-                            parentPassword: firebaseData.parentPassword || data.parentPassword || 'parent123',
-                            users: firebaseData.users || data.users || [],
+                            appPassword: firebaseData.appPassword || '1234',
+                            parentPassword: firebaseData.parentPassword || 'parent123',
+                            users: firebaseData.users || [],
                             tasks: firebaseData.tasks || [],
                             rewards: firebaseData.rewards || [],
                             taskSubmissions: firebaseData.taskSubmissions || [],
@@ -607,8 +625,11 @@
                         const newDataString = JSON.stringify(validatedData);
                         
                         if (newDataString !== currentDataString) {
+                            console.log("✅ Applying synced data to local state");
                             setData(validatedData);
                             localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
+                        } else {
+                            console.log("⏭️ Data identical - no update needed");
                         }
                     }
                 };
@@ -1035,7 +1056,7 @@
                             Unlock App
                         </button>
                         <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
-                            Complete Tasks and Earn Rewards !!!
+                            Complete more tasks, earn more Rewards !!!
                         </p>
                     </form>
                 </div>
@@ -1193,6 +1214,24 @@
                                 }}>
                                     {syncStatus}
                                 </span>
+                            )}
+                            {useFirebase && (
+                                <button 
+                                    style={{
+                                        marginLeft: '10px',
+                                        padding: '5px 10px',
+                                        fontSize: '12px',
+                                        background: '#667eea',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                    onClick={() => window.location.reload()}
+                                    title="Refresh to get latest data"
+                                >
+                                    🔄 Refresh
+                                </button>
                             )}
                             <button className="logout-btn" onClick={onLogout}>Logout</button>
                         </div>
