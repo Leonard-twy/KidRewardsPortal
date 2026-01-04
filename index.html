@@ -455,15 +455,27 @@
             users: [
                 { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
                 { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
-                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
-                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
+                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
             ],
             tasks: [],
             rewards: [],
             taskSubmissions: [],
             rewardRedemptions: [],
-            history: []
+            history: [],
+            bulletinBoards: {
+                common: {
+                    message: 'Welcome to the Family Rewards Portal! 🎉',
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: null
+                },
+                individual: {
+                    kid1: { message: '', updatedAt: null, updatedBy: null },
+                    kid2: { message: '', updatedAt: null, updatedBy: null },
+                    kid3: { message: '', updatedAt: null, updatedBy: null }
+                }
+            }
         };
 
         function App() {
@@ -478,15 +490,52 @@
                 if (!loadedData.parentPassword) {
                     loadedData.parentPassword = 'parent123';
                 }
+                
+                // Migrate bulletin boards
+                if (!loadedData.bulletinBoards) {
+                    loadedData.bulletinBoards = {
+                        common: {
+                            message: 'Welcome to the Family Rewards Portal! 🎉',
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: null
+                        },
+                        individual: {}
+                    };
+                }
+                
                 if (loadedData.users) {
                     loadedData.users = loadedData.users.map(u => {
+                        // Migrate passwords
                         if (!u.password) {
                             if (u.role === 'parent') {
-                                return { ...u, password: 'parent123' };
+                                u = { ...u, password: 'parent123' };
                             } else {
-                                return { ...u, password: u.id }; // kid1, kid2, kid3
+                                u = { ...u, password: u.id }; // kid1, kid2, kid3
                             }
                         }
+                        
+                        // Migrate profile images for kids
+                        if (u.role === 'kid') {
+                            if (!u.hasOwnProperty('dollars')) {
+                                u = { ...u, dollars: 0 };
+                            }
+                            if (!u.hasOwnProperty('topLeftImage')) {
+                                u = { ...u, topLeftImage: null };
+                            }
+                            if (!u.hasOwnProperty('bottomRightImage')) {
+                                u = { ...u, bottomRightImage: null };
+                            }
+                            
+                            // Initialize individual bulletin board for this kid
+                            if (!loadedData.bulletinBoards.individual[u.id]) {
+                                loadedData.bulletinBoards.individual[u.id] = {
+                                    message: '',
+                                    updatedAt: null,
+                                    updatedBy: null
+                                };
+                            }
+                        }
+                        
                         return u;
                     });
                 }
@@ -792,7 +841,11 @@
                     );
 
                     const updatedUsers = prev.users.map(u =>
-                        u.id === submission.kidId ? { ...u, points: u.points + task.points } : u
+                        u.id === submission.kidId ? { 
+                            ...u, 
+                            points: u.points + (task.points || 0),
+                            dollars: (u.dollars || 0) + (task.dollars || 0)
+                        } : u
                     );
 
                     const historyEntry = {
@@ -801,7 +854,8 @@
                         kidId: submission.kidId,
                         kidName: kid.name,
                         taskName: task.title,
-                        points: task.points,
+                        points: task.points || 0,
+                        dollars: task.dollars || 0,
                         approvedBy: currentUser.name,
                         timestamp: new Date().toISOString()
                     };
@@ -849,8 +903,17 @@
                     const reward = prev.rewards.find(r => r.id === redemption.rewardId);
                     const kid = prev.users.find(u => u.id === redemption.kidId);
 
-                    if (kid.points < reward.points) {
-                        alert('Insufficient points!');
+                    // Check if kid has enough points or dollars
+                    const needsPoints = reward.points || 0;
+                    const needsDollars = reward.dollars || 0;
+                    
+                    if (kid.points < needsPoints) {
+                        alert(`Insufficient points! Need ${needsPoints}, have ${kid.points}`);
+                        return prev;
+                    }
+                    
+                    if ((kid.dollars || 0) < needsDollars) {
+                        alert(`Insufficient dollars! Need $${needsDollars}, have $${kid.dollars || 0}`);
                         return prev;
                     }
 
@@ -859,7 +922,11 @@
                     );
 
                     const updatedUsers = prev.users.map(u =>
-                        u.id === redemption.kidId ? { ...u, points: u.points - reward.points } : u
+                        u.id === redemption.kidId ? { 
+                            ...u, 
+                            points: u.points - needsPoints,
+                            dollars: (u.dollars || 0) - needsDollars
+                        } : u
                     );
 
                     const historyEntry = {
@@ -868,7 +935,8 @@
                         kidId: redemption.kidId,
                         kidName: kid.name,
                         rewardName: reward.title,
-                        points: reward.points,
+                        points: needsPoints,
+                        dollars: needsDollars,
                         approvedBy: currentUser.name,
                         timestamp: new Date().toISOString()
                     };
@@ -919,6 +987,40 @@
                 }));
             };
 
+            const updateProfileImage = (userId, imageType, photoDataUrl) => {
+                setData(prev => ({
+                    ...prev,
+                    users: prev.users.map(u => 
+                        u.id === userId ? { ...u, [imageType]: photoDataUrl } : u
+                    )
+                }));
+            };
+
+            const updateBulletinBoard = (type, kidId, message) => {
+                setData(prev => {
+                    const updatedBoards = { ...prev.bulletinBoards };
+                    
+                    if (type === 'common') {
+                        updatedBoards.common = {
+                            message,
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: currentUser.name
+                        };
+                    } else if (type === 'individual' && kidId) {
+                        updatedBoards.individual[kidId] = {
+                            message,
+                            updatedAt: new Date().toISOString(),
+                            updatedBy: currentUser.name
+                        };
+                    }
+                    
+                    return {
+                        ...prev,
+                        bulletinBoards: updatedBoards
+                    };
+                });
+            };
+
             if (isLoading) {
                 return (
                     <div style={{ 
@@ -963,6 +1065,7 @@
                     onApproveRedemption={approveRedemption}
                     onRejectRedemption={rejectRedemption}
                     onResetKid={resetKid}
+                    onUpdateBulletinBoard={updateBulletinBoard}
                     syncStatus={syncStatus}
                     showModal={showModal}
                     modalType={modalType}
@@ -982,6 +1085,7 @@
                     onSubmitTask={submitTask}
                     onSubmitRedemption={submitRedemption}
                     onUpdateProfilePhoto={updateProfilePhoto}
+                    onUpdateProfileImage={updateProfileImage}
                 />;
             }
         }
@@ -1056,7 +1160,7 @@
                             Unlock App
                         </button>
                         <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
-                            Complete more tasks, earn more Rewards !!!
+                            Do and be Rewarded !!!
                         </p>
                     </form>
                 </div>
@@ -1185,6 +1289,7 @@
             onApproveRedemption,
             onRejectRedemption,
             onResetKid,
+            onUpdateBulletinBoard,
             syncStatus,
             showModal,
             modalType,
@@ -1257,6 +1362,12 @@
                             Kids Overview
                         </button>
                         <button 
+                            className={`tab ${activeTab === 'bulletin' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('bulletin')}
+                        >
+                            📋 Bulletin Board
+                        </button>
+                        <button 
                             className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
                             onClick={() => setActiveTab('settings')}
                         >
@@ -1294,6 +1405,13 @@
                                 onResetKid={onResetKid}
                             />
                         )}
+                        {activeTab === 'bulletin' && (
+                            <BulletinBoardTab
+                                data={data}
+                                currentUser={currentUser}
+                                onUpdateBulletinBoard={onUpdateBulletinBoard}
+                            />
+                        )}
                         {activeTab === 'settings' && (
                             <SettingsTab
                                 data={data}
@@ -1328,6 +1446,130 @@
                             )}
                         </Modal>
                     )}
+                </div>
+            );
+        }
+
+        function BulletinBoardTab({ data, currentUser, onUpdateBulletinBoard }) {
+            const [commonMessage, setCommonMessage] = useState(data.bulletinBoards?.common?.message || '');
+            const [selectedKid, setSelectedKid] = useState(null);
+            const [individualMessage, setIndividualMessage] = useState('');
+            
+            const kids = data.users.filter(u => u.role === 'kid');
+            
+            const handleSaveCommon = () => {
+                onUpdateBulletinBoard('common', null, commonMessage);
+                alert('Common bulletin board updated!');
+            };
+            
+            const handleSaveIndividual = () => {
+                if (!selectedKid) {
+                    alert('Please select a kid first');
+                    return;
+                }
+                onUpdateBulletinBoard('individual', selectedKid, individualMessage);
+                alert(`Bulletin board for ${kids.find(k => k.id === selectedKid)?.name} updated!`);
+            };
+            
+            const handleKidSelect = (kidId) => {
+                setSelectedKid(kidId);
+                setIndividualMessage(data.bulletinBoards?.individual?.[kidId]?.message || '');
+            };
+
+            return (
+                <div>
+                    {/* Common Bulletin Board */}
+                    <div className="card" style={{ marginBottom: '20px' }}>
+                        <h3>📢 Common Bulletin Board</h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            This message will be visible to all kids on their dashboard
+                        </p>
+                        <textarea
+                            value={commonMessage}
+                            onChange={(e) => setCommonMessage(e.target.value)}
+                            placeholder="Enter message for all kids..."
+                            style={{
+                                width: '100%',
+                                minHeight: '120px',
+                                padding: '15px',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                fontFamily: 'inherit',
+                                resize: 'vertical'
+                            }}
+                        />
+                        {data.bulletinBoards?.common?.updatedAt && (
+                            <p style={{ fontSize: '12px', color: '#999', marginTop: '10px' }}>
+                                Last updated by {data.bulletinBoards.common.updatedBy || 'Unknown'} on{' '}
+                                {new Date(data.bulletinBoards.common.updatedAt).toLocaleString()}
+                            </p>
+                        )}
+                        <button className="btn" onClick={handleSaveCommon} style={{ marginTop: '15px' }}>
+                            Save Common Message
+                        </button>
+                    </div>
+
+                    {/* Individual Bulletin Boards */}
+                    <div className="card">
+                        <h3>👤 Individual Bulletin Boards</h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            Send a personal message to a specific kid
+                        </p>
+                        
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
+                                Select Kid:
+                            </label>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {kids.map(kid => (
+                                    <button
+                                        key={kid.id}
+                                        onClick={() => handleKidSelect(kid.id)}
+                                        style={{
+                                            padding: '10px 20px',
+                                            border: selectedKid === kid.id ? '2px solid #667eea' : '1px solid #e0e0e0',
+                                            borderRadius: '8px',
+                                            background: selectedKid === kid.id ? '#f0f4ff' : 'white',
+                                            cursor: 'pointer',
+                                            fontWeight: selectedKid === kid.id ? '600' : 'normal'
+                                        }}
+                                    >
+                                        {kid.name}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedKid && (
+                            <div>
+                                <textarea
+                                    value={individualMessage}
+                                    onChange={(e) => setIndividualMessage(e.target.value)}
+                                    placeholder={`Enter personal message for ${kids.find(k => k.id === selectedKid)?.name}...`}
+                                    style={{
+                                        width: '100%',
+                                        minHeight: '120px',
+                                        padding: '15px',
+                                        border: '1px solid #e0e0e0',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontFamily: 'inherit',
+                                        resize: 'vertical'
+                                    }}
+                                />
+                                {data.bulletinBoards?.individual?.[selectedKid]?.updatedAt && (
+                                    <p style={{ fontSize: '12px', color: '#999', marginTop: '10px' }}>
+                                        Last updated by {data.bulletinBoards.individual[selectedKid].updatedBy || 'Unknown'} on{' '}
+                                        {new Date(data.bulletinBoards.individual[selectedKid].updatedAt).toLocaleString()}
+                                    </p>
+                                )}
+                                <button className="btn" onClick={handleSaveIndividual} style={{ marginTop: '15px' }}>
+                                    Save Message for {kids.find(k => k.id === selectedKid)?.name}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -1698,13 +1940,51 @@
             );
         }
 
-        function KidDashboard({ data, currentUser, syncStatus, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto }) {
+        function KidDashboard({ data, currentUser, syncStatus, activeTab, setActiveTab, onLogout, onSubmitTask, onSubmitRedemption, onUpdateProfilePhoto, onUpdateProfileImage }) {
             const mySubmissions = (data.taskSubmissions || []).filter(s => s.kidId === currentUser.id);
             const myRedemptions = (data.rewardRedemptions || []).filter(r => r.kidId === currentUser.id);
             const myHistory = (data.history || []).filter(h => h.kidId === currentUser.id);
 
             return (
-                <div className="app-container">
+                <div className="app-container" style={{ position: 'relative' }}>
+                    {/* Top Left Decoration Image - Shown across all tabs */}
+                    {currentUser.topLeftImage && (
+                        <div style={{
+                            position: 'fixed',
+                            top: '80px',
+                            left: '20px',
+                            width: '100px',
+                            height: '100px',
+                            zIndex: 999,
+                            pointerEvents: 'none'
+                        }}>
+                            <img 
+                                src={currentUser.topLeftImage} 
+                                alt="Top decoration" 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.2))' }}
+                            />
+                        </div>
+                    )}
+
+                    {/* Bottom Right Decoration Image - Shown across all tabs */}
+                    {currentUser.bottomRightImage && (
+                        <div style={{
+                            position: 'fixed',
+                            bottom: '20px',
+                            right: '20px',
+                            width: '100px',
+                            height: '100px',
+                            zIndex: 999,
+                            pointerEvents: 'none'
+                        }}>
+                            <img 
+                                src={currentUser.bottomRightImage} 
+                                alt="Bottom decoration" 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.2))' }}
+                            />
+                        </div>
+                    )}
+                    
                     <div className="header">
                         <h2>My Dashboard</h2>
                         <div className="header-info">
@@ -1718,10 +1998,51 @@
                                     {syncStatus}
                                 </span>
                             )}
-                            <div className="points-badge">{currentUser.points} Points</div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <div className="points-badge">{currentUser.points} Points</div>
+                                <div className="points-badge" style={{ background: '#28a745' }}>
+                                    ${(currentUser.dollars || 0).toFixed(2)}
+                                </div>
+                            </div>
                             <button className="logout-btn" onClick={onLogout}>Logout</button>
                         </div>
                     </div>
+
+                    {/* Bulletin Boards */}
+                    {(data.bulletinBoards?.common?.message || data.bulletinBoards?.individual?.[currentUser.id]?.message) && (
+                        <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+                            {/* Common Bulletin Board */}
+                            {data.bulletinBoards?.common?.message && (
+                                <div style={{
+                                    background: '#fff3cd',
+                                    border: '2px solid #ffc107',
+                                    borderRadius: '8px',
+                                    padding: '15px',
+                                    marginBottom: '15px'
+                                }}>
+                                    <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>📢 Announcement for Everyone</h4>
+                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#856404' }}>
+                                        {data.bulletinBoards.common.message}
+                                    </p>
+                                </div>
+                            )}
+                            
+                            {/* Individual Bulletin Board */}
+                            {data.bulletinBoards?.individual?.[currentUser.id]?.message && (
+                                <div style={{
+                                    background: '#d4edda',
+                                    border: '2px solid #28a745',
+                                    borderRadius: '8px',
+                                    padding: '15px'
+                                }}>
+                                    <h4 style={{ margin: '0 0 10px 0', color: '#155724' }}>💌 Personal Message for You</h4>
+                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#155724' }}>
+                                        {data.bulletinBoards.individual[currentUser.id].message}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <div className="tabs">
                         <button 
@@ -1758,7 +2079,11 @@
 
                     <div className="main-content">
                         {activeTab === 'profile' && (
-                            <ProfileTab currentUser={currentUser} onUpdateProfilePhoto={onUpdateProfilePhoto} />
+                            <ProfileTab 
+                                currentUser={currentUser} 
+                                onUpdateProfilePhoto={onUpdateProfilePhoto}
+                                onUpdateProfileImage={onUpdateProfileImage}
+                            />
                         )}
                         {activeTab === 'balance' && (
                             <BalanceTab currentUser={currentUser} history={myHistory} />
@@ -1786,7 +2111,7 @@
             );
         }
 
-        function ProfileTab({ currentUser, onUpdateProfilePhoto }) {
+        function ProfileTab({ currentUser, onUpdateProfilePhoto, onUpdateProfileImage }) {
             const handlePhotoUpload = (event) => {
                 const file = event.target.files[0];
                 if (file) {
@@ -1810,14 +2135,79 @@
                 }
             };
 
+            const handleDecorationUpload = (imageType) => (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    // Check file size (max 1MB for decoration images)
+                    if (file.size > 1 * 1024 * 1024) {
+                        alert('Image is too large. Please choose an image smaller than 1MB.');
+                        return;
+                    }
+
+                    // Check file type
+                    if (!file.type.startsWith('image/')) {
+                        alert('Please select an image file.');
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        onUpdateProfileImage(currentUser.id, imageType, e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
             const handleRemovePhoto = () => {
                 if (confirm('Remove your profile photo?')) {
                     onUpdateProfilePhoto(currentUser.id, null);
                 }
             };
 
+            const handleRemoveDecoration = (imageType) => () => {
+                if (confirm('Remove this decoration image?')) {
+                    onUpdateProfileImage(currentUser.id, imageType, null);
+                }
+            };
+
             return (
-                <div className="card">
+                <div className="card" style={{ position: 'relative' }}>
+                    {/* Top Left Decoration Image */}
+                    {currentUser.topLeftImage && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '10px',
+                            left: '10px',
+                            width: '80px',
+                            height: '80px',
+                            zIndex: 10
+                        }}>
+                            <img 
+                                src={currentUser.topLeftImage} 
+                                alt="Top decoration" 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
+                        </div>
+                    )}
+
+                    {/* Bottom Right Decoration Image */}
+                    {currentUser.bottomRightImage && (
+                        <div style={{
+                            position: 'absolute',
+                            bottom: '10px',
+                            right: '10px',
+                            width: '80px',
+                            height: '80px',
+                            zIndex: 10
+                        }}>
+                            <img 
+                                src={currentUser.bottomRightImage} 
+                                alt="Bottom decoration" 
+                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
+                        </div>
+                    )}
+
                     <h3>My Profile</h3>
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                         <div style={{ 
@@ -1854,31 +2244,96 @@
                             {currentUser.points} Points
                         </div>
 
-                        <div style={{ maxWidth: '300px', margin: '0 auto' }}>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handlePhotoUpload}
-                                style={{ display: 'none' }}
-                                id="photo-upload"
-                            />
-                            <label htmlFor="photo-upload" className="btn" style={{ width: '100%', cursor: 'pointer', marginBottom: '10px' }}>
-                                {currentUser.profilePhoto ? 'Change Photo' : 'Upload Photo'}
-                            </label>
-                            
-                            {currentUser.profilePhoto && (
-                                <button 
-                                    className="btn btn-danger" 
-                                    style={{ width: '100%' }}
-                                    onClick={handleRemovePhoto}
-                                >
-                                    Remove Photo
-                                </button>
-                            )}
+                        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+                            {/* Profile Photo Upload */}
+                            <div style={{ marginBottom: '30px' }}>
+                                <h4 style={{ marginBottom: '10px' }}>Profile Photo</h4>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handlePhotoUpload}
+                                    style={{ display: 'none' }}
+                                    id="photo-upload"
+                                />
+                                <label htmlFor="photo-upload" className="btn" style={{ width: '100%', cursor: 'pointer', marginBottom: '10px' }}>
+                                    {currentUser.profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                                </label>
+                                
+                                {currentUser.profilePhoto && (
+                                    <button 
+                                        className="btn btn-danger" 
+                                        style={{ width: '100%' }}
+                                        onClick={handleRemovePhoto}
+                                    >
+                                        Remove Photo
+                                    </button>
+                                )}
 
-                            <p style={{ fontSize: '12px', color: '#999', marginTop: '15px' }}>
-                                Upload a photo to personalize your profile. Max size: 2MB
-                            </p>
+                                <p style={{ fontSize: '12px', color: '#999', marginTop: '10px' }}>
+                                    Upload a photo to personalize your profile. Max size: 2MB
+                                </p>
+                            </div>
+
+                            {/* Decoration Images */}
+                            <div style={{ marginBottom: '20px' }}>
+                                <h4 style={{ marginBottom: '15px', color: '#667eea' }}>🎨 Decorate Your Profile!</h4>
+                                
+                                {/* Top Left Image */}
+                                <div style={{ marginBottom: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '10px' }}>
+                                        Top Left Corner Image
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleDecorationUpload('topLeftImage')}
+                                        style={{ display: 'none' }}
+                                        id="top-left-upload"
+                                    />
+                                    <label htmlFor="top-left-upload" className="btn btn-secondary" style={{ width: '100%', cursor: 'pointer', marginBottom: '5px' }}>
+                                        {currentUser.topLeftImage ? 'Change Top Image' : 'Add Top Image'}
+                                    </label>
+                                    {currentUser.topLeftImage && (
+                                        <button 
+                                            className="btn btn-danger" 
+                                            style={{ width: '100%', fontSize: '12px', padding: '5px' }}
+                                            onClick={handleRemoveDecoration('topLeftImage')}
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Bottom Right Image */}
+                                <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '8px' }}>
+                                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '10px' }}>
+                                        Bottom Right Corner Image
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleDecorationUpload('bottomRightImage')}
+                                        style={{ display: 'none' }}
+                                        id="bottom-right-upload"
+                                    />
+                                    <label htmlFor="bottom-right-upload" className="btn btn-secondary" style={{ width: '100%', cursor: 'pointer', marginBottom: '5px' }}>
+                                        {currentUser.bottomRightImage ? 'Change Bottom Image' : 'Add Bottom Image'}
+                                    </label>
+                                    {currentUser.bottomRightImage && (
+                                        <button 
+                                            className="btn btn-danger" 
+                                            style={{ width: '100%', fontSize: '12px', padding: '5px' }}
+                                            onClick={handleRemoveDecoration('bottomRightImage')}
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+
+                                <p style={{ fontSize: '12px', color: '#999', marginTop: '15px' }}>
+                                    Add cute stickers or decorations to the corners! Max size: 1MB each
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2110,10 +2565,16 @@
             const [title, setTitle] = useState(task?.title || '');
             const [description, setDescription] = useState(task?.description || '');
             const [points, setPoints] = useState(task?.points || 10);
+            const [dollars, setDollars] = useState(task?.dollars || 0);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                onSave({ title, description, points: parseInt(points) });
+                onSave({ 
+                    title, 
+                    description, 
+                    points: parseInt(points) || 0,
+                    dollars: parseFloat(dollars) || 0
+                });
             };
 
             return (
@@ -2137,16 +2598,32 @@
                             placeholder="Optional details about the task"
                         />
                     </div>
-                    <div className="form-group">
-                        <label>Points *</label>
-                        <input
-                            type="number"
-                            value={points}
-                            onChange={(e) => setPoints(e.target.value)}
-                            required
-                            min="1"
-                        />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        <div className="form-group">
+                            <label>Points</label>
+                            <input
+                                type="number"
+                                value={points}
+                                onChange={(e) => setPoints(e.target.value)}
+                                min="0"
+                                placeholder="0"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Dollars ($)</label>
+                            <input
+                                type="number"
+                                value={dollars}
+                                onChange={(e) => setDollars(e.target.value)}
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                            />
+                        </div>
                     </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '-10px', marginBottom: '15px' }}>
+                        Set points, dollars, or both. At least one must be greater than 0.
+                    </p>
                     <div className="form-actions">
                         <button type="button" className="btn btn-secondary" onClick={onClose}>
                             Cancel
@@ -2163,10 +2640,16 @@
             const [title, setTitle] = useState(reward?.title || '');
             const [description, setDescription] = useState(reward?.description || '');
             const [points, setPoints] = useState(reward?.points || 50);
+            const [dollars, setDollars] = useState(reward?.dollars || 0);
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                onSave({ title, description, points: parseInt(points) });
+                onSave({ 
+                    title, 
+                    description, 
+                    points: parseInt(points) || 0,
+                    dollars: parseFloat(dollars) || 0
+                });
             };
 
             return (
@@ -2190,16 +2673,32 @@
                             placeholder="Optional details about the reward"
                         />
                     </div>
-                    <div className="form-group">
-                        <label>Points Cost *</label>
-                        <input
-                            type="number"
-                            value={points}
-                            onChange={(e) => setPoints(e.target.value)}
-                            required
-                            min="1"
-                        />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                        <div className="form-group">
+                            <label>Points Cost</label>
+                            <input
+                                type="number"
+                                value={points}
+                                onChange={(e) => setPoints(e.target.value)}
+                                min="0"
+                                placeholder="0"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Dollar Cost ($)</label>
+                            <input
+                                type="number"
+                                value={dollars}
+                                onChange={(e) => setDollars(e.target.value)}
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                            />
+                        </div>
                     </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '-10px', marginBottom: '15px' }}>
+                        Set points, dollars, or both. At least one must be greater than 0.
+                    </p>
                     <div className="form-actions">
                         <button type="button" className="btn btn-secondary" onClick={onClose}>
                             Cancel
