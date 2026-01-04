@@ -453,8 +453,8 @@
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Dad', role: 'parent', password: '3139' },
-                { id: 'parent2', name: 'Mom', role: 'parent', password: '3139' },
+                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
                 { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, password: 'kid1', profilePhoto: null },
                 { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, password: 'kid2', profilePhoto: null },
                 { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, password: 'kid3', profilePhoto: null }
@@ -554,10 +554,16 @@
 
                 const dataRef = database.ref('familyData');
                 let isFirstLoad = true;
+                let isSavingRef = false;
+                
+                // Update the ref whenever isSaving changes
+                const savingCheckInterval = setInterval(() => {
+                    isSavingRef = isSaving;
+                }, 100);
                 
                 const handleValueChange = (snapshot) => {
                     // Ignore if we're currently saving (this is our own write)
-                    if (isSaving) {
+                    if (isSavingRef) {
                         console.log("⏭️ Skipping sync - currently saving");
                         return;
                     }
@@ -615,9 +621,10 @@
                 // Cleanup listener on unmount
                 return () => {
                     console.log("Cleaning up Firebase listener");
+                    clearInterval(savingCheckInterval);
                     dataRef.off('value', handleValueChange);
                 };
-            }, [isSaving]);
+            }, []);
 
 
             const unlockApp = (password) => {
@@ -1027,7 +1034,9 @@
                         <button type="submit" className="btn" style={{ width: '100%' }}>
                             Unlock App
                         </button>
-
+                        <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
+                            Complete Tasks and Earn Rewards !!!
+                        </p>
                     </form>
                 </div>
             );
