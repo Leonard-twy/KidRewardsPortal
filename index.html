@@ -553,6 +553,7 @@
             const [syncStatus, setSyncStatus] = useState('');
             const [lastSavedData, setLastSavedData] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
+            const [isLoadingFromFirebase, setIsLoadingFromFirebase] = useState(false);
 
             // Initialize loading state
             useEffect(() => {
@@ -567,6 +568,12 @@
                 
                 // Save to Firebase if enabled and data changed
                 if (useFirebase && database) {
+                    // Skip if we're currently loading from Firebase
+                    if (isLoadingFromFirebase) {
+                        console.log("⏭️ Skipping save - loading from Firebase");
+                        return;
+                    }
+                    
                     // Check if data actually changed to avoid infinite loops
                     const dataString = JSON.stringify(data);
                     if (dataString === lastSavedData) {
@@ -675,8 +682,12 @@
                         
                         if (newDataString !== currentDataString) {
                             console.log("✅ Applying synced data to local state");
+                            setIsLoadingFromFirebase(true);
                             setData(validatedData);
+                            setLastSavedData(newDataString); // Mark as already saved
                             localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
+                            // Clear flag after a short delay
+                            setTimeout(() => setIsLoadingFromFirebase(false), 500);
                         } else {
                             console.log("⏭️ Data identical - no update needed");
                         }
