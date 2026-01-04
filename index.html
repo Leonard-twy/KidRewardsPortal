@@ -453,11 +453,11 @@
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
-                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
+                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
             ],
             tasks: [],
             rewards: [],
@@ -665,16 +665,46 @@
                     
                     if (firebaseData && firebaseData.users && firebaseData.users.length > 0) {
                         // Ensure all required fields exist
-                        const validatedData = {
-                            appPassword: firebaseData.appPassword || '1234',
-                            parentPassword: firebaseData.parentPassword || 'parent123',
-                            users: firebaseData.users || [],
-                            tasks: firebaseData.tasks || [],
-                            rewards: firebaseData.rewards || [],
-                            taskSubmissions: firebaseData.taskSubmissions || [],
-                            rewardRedemptions: firebaseData.rewardRedemptions || [],
-                            history: firebaseData.history || []
-                        };
+			const defaultBulletinBoards = {
+  				common: {
+    				message: 'Welcome to the Family Rewards Portal! 🎉',
+    				updatedAt: null,
+    				updatedBy: null
+  			},
+  			individual: {}
+			};
+
+			const users = firebaseData.users || [];
+			const kids = users.filter(u => u.role === 'kid');
+
+			const incomingBoards = firebaseData.bulletinBoards || defaultBulletinBoards;
+
+			// Ensure every kid has an individual board entry
+			const individual = { ...(incomingBoards.individual || {}) };
+			kids.forEach(kid => {
+  			if (!individual[kid.id]) {
+    			individual[kid.id] = { message: '', updatedAt: null, updatedBy: null };
+  			}
+			});
+
+			const validatedData = {
+  				appPassword: firebaseData.appPassword || '1234',
+  				parentPassword: firebaseData.parentPassword || 'parent123',
+  				users,
+  				tasks: firebaseData.tasks || [],
+  				rewards: firebaseData.rewards || [],
+  				taskSubmissions: firebaseData.taskSubmissions || [],
+  				rewardRedemptions: firebaseData.rewardRedemptions || [],
+  				history: firebaseData.history || [],
+  				bulletinBoards: {
+    			common: {
+      			...(defaultBulletinBoards.common),
+      			...(incomingBoards.common || {})
+    			},
+    			individual
+  			}
+			};
+
                         
                         // Only update if data actually changed
                         const currentDataString = JSON.stringify(data);
@@ -1171,7 +1201,7 @@
                             Unlock App
                         </button>
                         <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
-                            Do and be Rewarded !!!
+                            Default password: 1234
                         </p>
                     </form>
                 </div>
@@ -2031,10 +2061,7 @@
                                     padding: '15px',
                                     marginBottom: '15px'
                                 }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>📢 Announcement for Everyone</h4>
-                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#856404' }}>
-                                        {data.bulletinBoards.common.message}
-                                    </p>
+
                                 </div>
                             )}
                             
@@ -2046,10 +2073,7 @@
                                     borderRadius: '8px',
                                     padding: '15px'
                                 }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#155724' }}>💌 Personal Message for You</h4>
-                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#155724' }}>
-                                        {data.bulletinBoards.individual[currentUser.id].message}
-                                    </p>
+
                                 </div>
                             )}
                         </div>
@@ -2097,7 +2121,18 @@
                     <div className="main-content">
                         {activeTab === 'home' && (
                             <div>
-                                <h2 style={{ marginBottom: '20px', color: '#667eea' }}>Welcome, {currentUser.name}! 👋</h2>
+                                <h2 style={{
+  marginBottom: '20px',
+  display: 'inline-block',
+  padding: '10px 14px',
+  borderRadius: '12px',
+  background: 'rgba(0,0,0,0.18)',
+  color: '#ffffff',
+  fontWeight: 800,
+  textShadow: '0 2px 10px rgba(0,0,0,0.25)'
+}}>
+  Welcome, {currentUser.name}! 👋
+</h2>
                                 
                                 {/* Common Bulletin Board */}
                                 {data.bulletinBoards?.common?.message && (
@@ -2106,7 +2141,7 @@
                                         border: '3px solid #ffc107',
                                         marginBottom: '20px'
                                     }}>
-                                        <h3 style={{ color: '#856404', marginBottom: '15px' }}>📢 Announcement for Everyone</h3>
+                                        <h3 style={{ color: '#856404', marginBottom: '15px' }}>📢 Announcement for Everyone top part</h3>
                                         <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#856404' }}>
                                             {data.bulletinBoards.common.message}
                                         </p>
