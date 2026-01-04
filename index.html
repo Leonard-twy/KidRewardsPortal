@@ -545,7 +545,7 @@
             const [currentUser, setCurrentUser] = useState(null);
             const [isAppUnlocked, setIsAppUnlocked] = useState(false);
             const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [activeTab, setActiveTab] = useState('tasks');
+            const [activeTab, setActiveTab] = useState('home');
             const [showModal, setShowModal] = useState(false);
             const [modalType, setModalType] = useState('');
             const [editItem, setEditItem] = useState(null);
@@ -2057,6 +2057,12 @@
 
                     <div className="tabs">
                         <button 
+                            className={`tab ${activeTab === 'home' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('home')}
+                        >
+                            🏠 Home
+                        </button>
+                        <button 
                             className={`tab ${activeTab === 'profile' ? 'active' : ''}`}
                             onClick={() => setActiveTab('profile')}
                         >
@@ -2066,7 +2072,7 @@
                             className={`tab ${activeTab === 'balance' ? 'active' : ''}`}
                             onClick={() => setActiveTab('balance')}
                         >
-                            Points Balance
+                            My Balance
                         </button>
                         <button 
                             className={`tab ${activeTab === 'tasks' ? 'active' : ''}`}
@@ -2089,6 +2095,61 @@
                     </div>
 
                     <div className="main-content">
+                        {activeTab === 'home' && (
+                            <div>
+                                <h2 style={{ marginBottom: '20px', color: '#667eea' }}>Welcome, {currentUser.name}! 👋</h2>
+                                
+                                {/* Common Bulletin Board */}
+                                {data.bulletinBoards?.common?.message && (
+                                    <div className="card" style={{
+                                        background: 'linear-gradient(135deg, #fff3cd 0%, #fffaeb 100%)',
+                                        border: '3px solid #ffc107',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <h3 style={{ color: '#856404', marginBottom: '15px' }}>📢 Announcement for Everyone</h3>
+                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#856404' }}>
+                                            {data.bulletinBoards.common.message}
+                                        </p>
+                                        {data.bulletinBoards.common.updatedAt && (
+                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '15px', fontStyle: 'italic' }}>
+                                                Posted by {data.bulletinBoards.common.updatedBy} on {new Date(data.bulletinBoards.common.updatedAt).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {/* Individual Bulletin Board */}
+                                {data.bulletinBoards?.individual?.[currentUser.id]?.message && (
+                                    <div className="card" style={{
+                                        background: 'linear-gradient(135deg, #d4edda 0%, #e8f5e9 100%)',
+                                        border: '3px solid #28a745',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <h3 style={{ color: '#155724', marginBottom: '15px' }}>💌 Personal Message Just for You</h3>
+                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#155724' }}>
+                                            {data.bulletinBoards.individual[currentUser.id].message}
+                                        </p>
+                                        {data.bulletinBoards.individual[currentUser.id].updatedAt && (
+                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '15px', fontStyle: 'italic' }}>
+                                                Posted by {data.bulletinBoards.individual[currentUser.id].updatedBy} on {new Date(data.bulletinBoards.individual[currentUser.id].updatedAt).toLocaleDateString()}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                                
+                                {/* Quick Stats */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+                                    <div className="card" style={{ textAlign: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                                        <h3 style={{ color: 'white', marginBottom: '10px' }}>Points Balance</h3>
+                                        <div style={{ fontSize: '42px', fontWeight: 'bold' }}>{currentUser.points}</div>
+                                    </div>
+                                    <div className="card" style={{ textAlign: 'center', background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)', color: 'white' }}>
+                                        <h3 style={{ color: 'white', marginBottom: '10px' }}>Dollar Balance</h3>
+                                        <div style={{ fontSize: '42px', fontWeight: 'bold' }}>${(currentUser.dollars || 0).toFixed(2)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {activeTab === 'profile' && (
                             <ProfileTab 
                                 currentUser={currentUser} 
@@ -2251,8 +2312,9 @@
                         </div>
 
                         <h2 style={{ marginBottom: '10px', color: '#333' }}>{currentUser.name}</h2>
-                        <div className="points-badge" style={{ display: 'inline-block', marginBottom: '30px' }}>
-                            {currentUser.points} Points
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '30px' }}>
+                            <div className="points-badge">{currentUser.points} Points</div>
+                            <div className="points-badge" style={{ background: '#28a745' }}>${(currentUser.dollars || 0).toFixed(2)}</div>
                         </div>
 
                         <div style={{ maxWidth: '400px', margin: '0 auto' }}>
@@ -2355,26 +2417,47 @@
             const recentActivity = history.slice(-5).reverse();
 
             return (
-                <div className="card">
-                    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                        <h3 style={{ marginBottom: '20px' }}>Current Balance</h3>
-                        <div style={{ 
-                            fontSize: '72px', 
-                            fontWeight: 'bold',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            marginBottom: '10px'
-                        }}>
-                            {currentUser.points}
+                <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+                        {/* Points Balance Card */}
+                        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <h3 style={{ marginBottom: '20px', color: '#667eea' }}>Points Balance</h3>
+                            <div style={{ 
+                                fontSize: '72px', 
+                                fontWeight: 'bold',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                marginBottom: '10px'
+                            }}>
+                                {currentUser.points}
+                            </div>
+                            <div style={{ fontSize: '24px', color: '#666' }}>
+                                points
+                            </div>
                         </div>
-                        <div style={{ fontSize: '24px', color: '#666', marginBottom: '40px' }}>
-                            points
+
+                        {/* Dollar Balance Card */}
+                        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <h3 style={{ marginBottom: '20px', color: '#28a745' }}>Dollar Balance</h3>
+                            <div style={{ 
+                                fontSize: '72px', 
+                                fontWeight: 'bold',
+                                background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                marginBottom: '10px'
+                            }}>
+                                ${(currentUser.dollars || 0).toFixed(2)}
+                            </div>
+                            <div style={{ fontSize: '24px', color: '#666' }}>
+                                dollars
+                            </div>
                         </div>
                     </div>
 
                     {recentActivity.length > 0 && (
-                        <>
+                        <div className="card">
                             <h4 style={{ marginBottom: '15px', color: '#667eea' }}>Recent Activity</h4>
                             <div>
                                 {recentActivity.map(h => (
@@ -2389,15 +2472,22 @@
                                                 <span style={{ color: '#f5576c' }}>★ {h.rewardName}</span>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: '14px', color: '#666' }}>
-                                            <span style={{ fontWeight: 'bold', color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
-                                                {h.type === 'task_completed' ? '+' : '-'}{h.points} points
-                                            </span>
+                                        <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
+                                            {h.points > 0 && (
+                                                <span style={{ fontWeight: 'bold', color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                                    {h.type === 'task_completed' ? '+' : '-'}{h.points} pts
+                                                </span>
+                                            )}
+                                            {h.dollars > 0 && (
+                                                <span style={{ fontWeight: 'bold', color: h.type === 'task_completed' ? '#28a745' : '#f5576c' }}>
+                                                    {h.type === 'task_completed' ? '+' : '-'}${h.dollars.toFixed(2)}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </>
+                        </div>
                     )}
                 </div>
             );
