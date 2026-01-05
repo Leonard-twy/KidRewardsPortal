@@ -453,11 +453,11 @@
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
-                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
+                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
             ],
             tasks: [],
             rewards: [],
@@ -568,6 +568,7 @@
             const [lastSavedData, setLastSavedData] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
             const [isLoadingFromFirebase, setIsLoadingFromFirebase] = useState(false);
+            const [firebaseInitialized, setFirebaseInitialized] = useState(false);
 
             // Initialize loading state
             useEffect(() => {
@@ -582,6 +583,12 @@
                 
                 // Save to Firebase if enabled and data changed
                 if (useFirebase && database) {
+                    // Skip if Firebase hasn't done its first load yet
+                    if (!firebaseInitialized) {
+                        console.log("⏭️ Skipping save - waiting for Firebase to initialize");
+                        return;
+                    }
+                    
                     // Skip if we're currently loading from Firebase
                     if (isLoadingFromFirebase) {
                         console.log("⏭️ Skipping save - loading from Firebase");
@@ -667,6 +674,7 @@
                         } else {
                             // Firebase is empty - initialize it with local data
                             console.log("📤 Firebase empty - Initializing with local data");
+                            setFirebaseInitialized(true); // Mark as initialized even if empty
                             database.ref('familyData').set(data).catch(err => {
                                 console.error("Error initializing Firebase:", err);
                             });
@@ -720,10 +728,14 @@
                             setData(validatedData);
                             setLastSavedData(newDataString); // Mark as already saved
                             localStorage.setItem('familyPointsApp', JSON.stringify(validatedData));
-                            // Clear flag after a short delay
+                            // Mark Firebase as initialized
+                            setFirebaseInitialized(true);
+                            // Clear loading flag after a short delay
                             setTimeout(() => setIsLoadingFromFirebase(false), 500);
                         } else {
                             console.log("⏭️ Data identical - no update needed");
+                            // Still mark as initialized even if data is the same
+                            setFirebaseInitialized(true);
                         }
                     }
                 };
@@ -1009,6 +1021,38 @@
                 }
             };
 
+            const awardBonus = (kidId, points, dollars, reason) => {
+                setData(prev => {
+                    const kid = prev.users.find(u => u.id === kidId);
+                    
+                    const updatedUsers = prev.users.map(u =>
+                        u.id === kidId ? { 
+                            ...u, 
+                            points: u.points + points,
+                            dollars: (u.dollars || 0) + dollars
+                        } : u
+                    );
+
+                    const historyEntry = {
+                        id: Date.now().toString(),
+                        type: 'bonus_awarded',
+                        kidId: kidId,
+                        kidName: kid.name,
+                        reason: reason,
+                        points: points,
+                        dollars: dollars,
+                        awardedBy: currentUser.name,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    return {
+                        ...prev,
+                        users: updatedUsers,
+                        history: [...prev.history, historyEntry]
+                    };
+                });
+            };
+
             const resetKid = (kidId, kidName) => {
                 if (confirm(`Are you sure you want to reset ${kidName}? This will:\n- Clear all their activities and history\n- Reset their points to 0\n- Remove all pending submissions and redemptions\n\nThis action cannot be undone.`)) {
                     setData(prev => ({
@@ -1110,6 +1154,7 @@
                     onApproveRedemption={approveRedemption}
                     onRejectRedemption={rejectRedemption}
                     onResetKid={resetKid}
+                    onAwardBonus={awardBonus}
                     onUpdateBulletinBoard={updateBulletinBoard}
                     syncStatus={syncStatus}
                     showModal={showModal}
@@ -1205,7 +1250,7 @@
                             Unlock App
                         </button>
                         <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
-                            Default password: 1234
+                            Complete the task to and Earn Points !!!
                         </p>
                     </form>
                 </div>
@@ -1334,6 +1379,7 @@
             onApproveRedemption,
             onRejectRedemption,
             onResetKid,
+            onAwardBonus,
             onUpdateBulletinBoard,
             syncStatus,
             showModal,
@@ -1448,6 +1494,7 @@
                                 users={data.users}
                                 history={data.history}
                                 onResetKid={onResetKid}
+                                onAwardBonus={onAwardBonus}
                             />
                         )}
                         {activeTab === 'bulletin' && (
@@ -1928,9 +1975,30 @@
             );
         }
 
-        function KidsOverviewTab({ users, history, onResetKid }) {
+        function KidsOverviewTab({ users, history, onResetKid, onAwardBonus }) {
             const kids = (users || []).filter(u => u.role === 'kid');
             const safeHistory = history || [];
+
+            const handleAwardBonus = (kid) => {
+                const points = prompt(`Enter bonus points for ${kid.name}:`, '0');
+                if (points === null) return; // Cancelled
+                
+                const dollars = prompt(`Enter bonus dollars for ${kid.name}:`, '0');
+                if (dollars === null) return; // Cancelled
+                
+                const reason = prompt(`Reason for bonus (optional):`, '');
+                
+                const pointsNum = parseInt(points) || 0;
+                const dollarsNum = parseFloat(dollars) || 0;
+                
+                if (pointsNum === 0 && dollarsNum === 0) {
+                    alert('Please enter at least some points or dollars to award!');
+                    return;
+                }
+                
+                onAwardBonus(kid.id, pointsNum, dollarsNum, reason || 'Bonus awarded');
+                alert(`Awarded to ${kid.name}:\n${pointsNum > 0 ? `+${pointsNum} points` : ''}${pointsNum > 0 && dollarsNum > 0 ? ' and ' : ''}${dollarsNum > 0 ? `+$${dollarsNum.toFixed(2)}` : ''}`);
+            };
 
             return (
                 <div className="card">
@@ -1942,7 +2010,10 @@
                                 <div key={kid.id} className="item-card">
                                     <div className="item-header">
                                         <div className="item-title">{kid.name}</div>
-                                        <div className="item-points">{kid.points} pts</div>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <div className="item-points">{kid.points} pts</div>
+                                            <div className="item-points" style={{ background: '#28a745' }}>${(kid.dollars || 0).toFixed(2)}</div>
+                                        </div>
                                     </div>
                                     <div style={{ marginTop: '15px' }}>
                                         <strong>Recent Activity:</strong>
@@ -1952,31 +2023,54 @@
                                             <div style={{ marginTop: '10px' }}>
                                                 {kidHistory.slice(-5).reverse().map(h => (
                                                     <div key={h.id} style={{ padding: '8px 0', borderBottom: '1px solid #e0e0e0', fontSize: '14px' }}>
-                                                        <span style={{ color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
-                                                            {h.type === 'task_completed' ? '+' : '-'}{h.points} pts
-                                                        </span>
-                                                        {' - '}
-                                                        {h.type === 'task_completed' ? h.taskName : h.rewardName}
-                                                        {' '}
-                                                        <span style={{ color: '#999' }}>
-                                                            (by {h.approvedBy})
-                                                        </span>
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            {h.type === 'bonus_awarded' ? (
+                                                                <>
+                                                                    <span style={{ color: '#4caf50', fontWeight: '600' }}>🎁 Bonus:</span>
+                                                                    {h.points > 0 && <span style={{ color: '#4caf50' }}>+{h.points} pts</span>}
+                                                                    {h.dollars > 0 && <span style={{ color: '#28a745' }}>+${h.dollars.toFixed(2)}</span>}
+                                                                    <span style={{ color: '#666' }}>- {h.reason}</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span style={{ color: h.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                                                        {h.type === 'task_completed' ? '+' : '-'}{h.points || 0} pts
+                                                                    </span>
+                                                                    {h.dollars > 0 && (
+                                                                        <span style={{ color: h.type === 'task_completed' ? '#28a745' : '#f5576c' }}>
+                                                                            {h.type === 'task_completed' ? '+' : '-'}${h.dollars.toFixed(2)}
+                                                                        </span>
+                                                                    )}
+                                                                    <span style={{ color: '#666' }}>
+                                                                        - {h.type === 'task_completed' ? h.taskName : h.rewardName}
+                                                                    </span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0' }}>
+                                    <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #e0e0e0', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <button 
+                                            className="btn btn-small"
+                                            style={{ background: '#28a745', flex: '1', minWidth: '150px' }}
+                                            onClick={() => handleAwardBonus(kid)}
+                                        >
+                                            🎁 Award Bonus
+                                        </button>
                                         <button 
                                             className="btn btn-danger btn-small"
+                                            style={{ flex: '1', minWidth: '150px' }}
                                             onClick={() => onResetKid(kid.id, kid.name)}
                                         >
                                             Reset {kid.name}
                                         </button>
-                                        <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                                            Clear all activities and reset points to 0
-                                        </p>
                                     </div>
+                                    <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                                        Award bonus points/dollars or reset all activities
+                                    </p>
                                 </div>
                             );
                         })}
@@ -1998,8 +2092,8 @@
                             position: 'fixed',
                             top: '80px',
                             left: '20px',
-                            width: '100px',
-                            height: '100px',
+                            width: '200px',
+                            height: '200px',
                             zIndex: 999,
                             pointerEvents: 'none'
                         }}>
@@ -2017,8 +2111,8 @@
                             position: 'fixed',
                             bottom: '20px',
                             right: '20px',
-                            width: '100px',
-                            height: '100px',
+                            width: '200px',
+                            height: '200px',
                             zIndex: 999,
                             pointerEvents: 'none'
                         }}>
@@ -2052,43 +2146,7 @@
                             <button className="logout-btn" onClick={onLogout}>Logout</button>
                         </div>
                     </div>
-
-                    {/* Bulletin Boards */}
-                    {(data.bulletinBoards?.common?.message || data.bulletinBoards?.individual?.[currentUser.id]?.message) && (
-                        <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-                            {/* Common Bulletin Board */}
-                            {data.bulletinBoards?.common?.message && (
-                                <div style={{
-                                    background: '#fff3cd',
-                                    border: '2px solid #ffc107',
-                                    borderRadius: '8px',
-                                    padding: '15px',
-                                    marginBottom: '15px'
-                                }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>📢 Announcement for Everyone</h4>
-                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#856404' }}>
-                                        {data.bulletinBoards.common.message}
-                                    </p>
-                                </div>
-                            )}
-                            
-                            {/* Individual Bulletin Board */}
-                            {data.bulletinBoards?.individual?.[currentUser.id]?.message && (
-                                <div style={{
-                                    background: '#d4edda',
-                                    border: '2px solid #28a745',
-                                    borderRadius: '8px',
-                                    padding: '15px'
-                                }}>
-                                    <h4 style={{ margin: '0 0 10px 0', color: '#155724' }}>💌 Personal Message for You</h4>
-                                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: '#155724' }}>
-                                        {data.bulletinBoards.individual[currentUser.id].message}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
+                    
                     <div className="tabs">
                         <button 
                             className={`tab ${activeTab === 'home' ? 'active' : ''}`}
@@ -2131,7 +2189,13 @@
                     <div className="main-content">
                         {activeTab === 'home' && (
                             <div>
-                                <h2 style={{ marginBottom: '20px', color: '#667eea' }}>Welcome, {currentUser.name}! 👋</h2>
+                                <h2 style={{ 
+                                    marginBottom: '20px', 
+                                    color: 'white', 
+                                    textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+                                    fontSize: '28px',
+                                    fontWeight: 'bold'
+                                }}>Welcome, {currentUser.name}! 👋</h2>
                                 
                                 {/* Common Bulletin Board */}
                                 {data.bulletinBoards?.common?.message && (
@@ -2140,13 +2204,20 @@
                                         border: '3px solid #ffc107',
                                         marginBottom: '20px'
                                     }}>
-                                        <h3 style={{ color: '#856404', marginBottom: '15px' }}>📢 Announcement for Everyone</h3>
-                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#856404' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                            <h3 style={{ color: '#856404', margin: 0 }}>📢 Announcement for Everyone</h3>
+                                            {data.bulletinBoards.common.updatedAt && (
+                                                <span style={{ fontSize: '12px', color: '#856404', fontWeight: '600' }}>
+                                                    {new Date(data.bulletinBoards.common.updatedAt).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#856404', marginBottom: '10px' }}>
                                             {data.bulletinBoards.common.message}
                                         </p>
-                                        {data.bulletinBoards.common.updatedAt && (
-                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '15px', fontStyle: 'italic' }}>
-                                                Posted by {data.bulletinBoards.common.updatedBy} on {new Date(data.bulletinBoards.common.updatedAt).toLocaleDateString()}
+                                        {data.bulletinBoards.common.updatedBy && (
+                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '10px', fontStyle: 'italic' }}>
+                                                Posted by {data.bulletinBoards.common.updatedBy}
                                             </p>
                                         )}
                                     </div>
@@ -2159,13 +2230,20 @@
                                         border: '3px solid #28a745',
                                         marginBottom: '20px'
                                     }}>
-                                        <h3 style={{ color: '#155724', marginBottom: '15px' }}>💌 Personal Message Just for You</h3>
-                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#155724' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                            <h3 style={{ color: '#155724', margin: 0 }}>💌 Personal Message Just for You</h3>
+                                            {data.bulletinBoards.individual[currentUser.id].updatedAt && (
+                                                <span style={{ fontSize: '12px', color: '#155724', fontWeight: '600' }}>
+                                                    {new Date(data.bulletinBoards.individual[currentUser.id].updatedAt).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <p style={{ fontSize: '16px', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: '#155724', marginBottom: '10px' }}>
                                             {data.bulletinBoards.individual[currentUser.id].message}
                                         </p>
-                                        {data.bulletinBoards.individual[currentUser.id].updatedAt && (
-                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '15px', fontStyle: 'italic' }}>
-                                                Posted by {data.bulletinBoards.individual[currentUser.id].updatedBy} on {new Date(data.bulletinBoards.individual[currentUser.id].updatedAt).toLocaleDateString()}
+                                        {data.bulletinBoards.individual[currentUser.id].updatedBy && (
+                                            <p style={{ fontSize: '11px', color: '#999', marginTop: '10px', fontStyle: 'italic' }}>
+                                                Posted by {data.bulletinBoards.individual[currentUser.id].updatedBy}
                                             </p>
                                         )}
                                     </div>
@@ -2277,44 +2355,7 @@
             };
 
             return (
-                <div className="card" style={{ position: 'relative' }}>
-                    {/* Top Left Decoration Image */}
-                    {currentUser.topLeftImage && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '10px',
-                            left: '10px',
-                            width: '80px',
-                            height: '80px',
-                            zIndex: 10
-                        }}>
-                            <img 
-                                src={currentUser.topLeftImage} 
-                                alt="Top decoration" 
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            />
-                        </div>
-                    )}
-
-                    {/* Bottom Right Decoration Image */}
-                    {currentUser.bottomRightImage && (
-                        <div style={{
-                            position: 'absolute',
-                            bottom: '10px',
-                            right: '10px',
-                            width: '80px',
-                            height: '80px',
-                            zIndex: 10
-                        }}>
-                            <img 
-                                src={currentUser.bottomRightImage} 
-                                alt="Bottom decoration" 
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                            />
-                        </div>
-                    )}
-
-                    <h3>My Profile</h3>
+                <div className="card">
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                         <div style={{ 
                             width: '200px', 
