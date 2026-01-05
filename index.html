@@ -1260,7 +1260,7 @@
                             Unlock App
                         </button>
                         <p style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '12px' }}>
-                            Default password: 1234
+                            Do Tasks and EARN POINTS !!!
                         </p>
                     </form>
                 </div>
@@ -1708,6 +1708,7 @@
             };
 
             const kids = data.users.filter(u => u.role === 'kid');
+            const parents = data.users.filter(u => u.role === 'parent');
 
             return (
                 <>
@@ -1715,8 +1716,42 @@
                     <div className="card" style={{ marginBottom: '30px' }}>
                         <h3>👤 Manage User Names</h3>
                         <p style={{ color: '#666', marginBottom: '20px' }}>
-                            Update display names for kids
+                            Update display names for all users
                         </p>
+                        
+                        {/* Parents Section */}
+                        <h4 style={{ marginBottom: '15px', color: '#667eea' }}>Parents</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '30px' }}>
+                            {parents.map(parent => (
+                                <div key={parent.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '15px',
+                                    background: '#f0f3ff',
+                                    borderRadius: '8px',
+                                    border: '1px solid #667eea'
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '5px' }}>
+                                            {parent.name}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#999' }}>
+                                            User ID: {parent.id} • Role: Parent
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="btn btn-secondary btn-small"
+                                        onClick={() => handleUpdateName(parent.id, parent.name)}
+                                    >
+                                        ✏️ Edit Name
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Kids Section */}
+                        <h4 style={{ marginBottom: '15px', color: '#4caf50' }}>Kids</h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             {kids.map(kid => (
                                 <div key={kid.id} style={{
@@ -2779,16 +2814,44 @@
                                     <div className="history-title">
                                         {item.type === 'task_completed' ? (
                                             <span style={{ color: '#4caf50' }}>✓ Completed: {item.taskName}</span>
+                                        ) : item.type === 'bonus_awarded' ? (
+                                            <span style={{ color: '#4caf50' }}>🎁 Bonus: {item.reason}</span>
                                         ) : (
                                             <span style={{ color: '#f5576c' }}>★ Redeemed: {item.rewardName}</span>
                                         )}
                                     </div>
                                     <div className="history-details">
-                                        <span style={{ fontWeight: 'bold', color: item.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
-                                            {item.type === 'task_completed' ? '+' : '-'}{item.points} points
-                                        </span>
-                                        {' • '}
-                                        Approved by {item.approvedBy}
+                                        {item.type === 'bonus_awarded' ? (
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {item.points > 0 && (
+                                                    <span style={{ fontWeight: 'bold', color: '#4caf50' }}>
+                                                        +{item.points} pts
+                                                    </span>
+                                                )}
+                                                {item.dollars > 0 && (
+                                                    <span style={{ fontWeight: 'bold', color: '#28a745' }}>
+                                                        +${item.dollars.toFixed(2)}
+                                                    </span>
+                                                )}
+                                                <span>• Awarded by {item.awardedBy}</span>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    {item.points > 0 && (
+                                                        <span style={{ fontWeight: 'bold', color: item.type === 'task_completed' ? '#4caf50' : '#f5576c' }}>
+                                                            {item.type === 'task_completed' ? '+' : '-'}{item.points} pts
+                                                        </span>
+                                                    )}
+                                                    {item.dollars > 0 && (
+                                                        <span style={{ fontWeight: 'bold', color: item.type === 'task_completed' ? '#28a745' : '#f5576c' }}>
+                                                            {item.type === 'task_completed' ? '+' : '-'}${item.dollars.toFixed(2)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span>• Approved by {item.approvedBy}</span>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))}
