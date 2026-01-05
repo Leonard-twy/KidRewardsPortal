@@ -453,11 +453,11 @@
             appPassword: '1234', // Main app password
             parentPassword: 'parent123', // Parent access password
             users: [
-                { id: 'parent1', name: 'Dad', role: 'parent', password: 'parent123' },
-                { id: 'parent2', name: 'Mom', role: 'parent', password: 'parent123' },
-                { id: 'kid1', name: 'Stephanie', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid2', name: 'Kladys', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
-                { id: 'kid3', name: 'Hendrix', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
+                { id: 'parent1', name: 'Parent 1', role: 'parent', password: 'parent123' },
+                { id: 'parent2', name: 'Parent 2', role: 'parent', password: 'parent123' },
+                { id: 'kid1', name: 'Kid 1', role: 'kid', points: 0, dollars: 0, password: 'kid1', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid2', name: 'Kid 2', role: 'kid', points: 0, dollars: 0, password: 'kid2', profilePhoto: null, topLeftImage: null, bottomRightImage: null },
+                { id: 'kid3', name: 'Kid 3', role: 'kid', points: 0, dollars: 0, password: 'kid3', profilePhoto: null, topLeftImage: null, bottomRightImage: null }
             ],
             tasks: [],
             rewards: [],
@@ -1110,6 +1110,15 @@
                 });
             };
 
+            const updateUserName = (userId, newName) => {
+                setData(prev => ({
+                    ...prev,
+                    users: prev.users.map(u => 
+                        u.id === userId ? { ...u, name: newName } : u
+                    )
+                }));
+            };
+
             if (isLoading) {
                 return (
                     <div style={{ 
@@ -1156,6 +1165,7 @@
                     onResetKid={resetKid}
                     onAwardBonus={awardBonus}
                     onUpdateBulletinBoard={updateBulletinBoard}
+                    onUpdateUserName={updateUserName}
                     syncStatus={syncStatus}
                     showModal={showModal}
                     modalType={modalType}
@@ -1381,6 +1391,7 @@
             onResetKid,
             onAwardBonus,
             onUpdateBulletinBoard,
+            onUpdateUserName,
             syncStatus,
             showModal,
             modalType,
@@ -1510,6 +1521,7 @@
                                 onUpdatePasswords={(passwords) => {
                                     setData(prev => ({ ...prev, ...passwords }));
                                 }}
+                                onUpdateUserName={onUpdateUserName}
                             />
                         )}
                     </div>
@@ -1666,7 +1678,7 @@
             );
         }
 
-        function SettingsTab({ data, onUpdatePasswords }) {
+        function SettingsTab({ data, onUpdatePasswords, onUpdateUserName }) {
             const [appPassword, setAppPassword] = useState(data.appPassword);
             const [parentPassword, setParentPassword] = useState(data.parentPassword);
             const [saved, setSaved] = useState(false);
@@ -1687,8 +1699,56 @@
                 setTimeout(() => setSaved(false), 3000);
             };
 
+            const handleUpdateName = (userId, currentName) => {
+                const newName = prompt(`Enter new name for ${currentName}:`, currentName);
+                if (newName && newName.trim() !== '' && newName !== currentName) {
+                    onUpdateUserName(userId, newName.trim());
+                    alert(`Name updated to: ${newName.trim()}`);
+                }
+            };
+
+            const kids = data.users.filter(u => u.role === 'kid');
+
             return (
-                <div className="card">
+                <div>
+                    {/* User Name Management */}
+                    <div className="card" style={{ marginBottom: '30px' }}>
+                        <h3>👤 Manage User Names</h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            Update display names for kids
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {kids.map(kid => (
+                                <div key={kid.id} style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '15px',
+                                    background: '#f8f9fa',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e0e0e0'
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: '600', fontSize: '16px', marginBottom: '5px' }}>
+                                            {kid.name}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#999' }}>
+                                            User ID: {kid.id}
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="btn btn-secondary btn-small"
+                                        onClick={() => handleUpdateName(kid.id, kid.name)}
+                                    >
+                                        ✏️ Edit Name
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Password Settings */}
+                    <div className="card">
                     <h3>Password Settings</h3>
                     <p style={{ color: '#666', marginBottom: '30px' }}>
                         Manage passwords for app access and user accounts
